@@ -1,0 +1,20 @@
+{
+  "name": "agent-harness",
+  "version": "0.1.0",
+  "description": "构建 AI Agent Harness · JavaScript 版（从 Python 教程改编）",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0",
+    "@types/node": "^22.0.0"
+  },
+  "dependencies": {
+    "openai": "^4.70.0"
+  }
+}
