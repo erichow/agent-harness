@@ -8,7 +8,9 @@
 export const VERSION = "0.1.0";
 
 export { run, MAX_ITERATIONS } from "./agent.js";
-export type { ToolFunction } from "./agent.js";
+
+export { ToolRegistry } from "./tools/registry.js";
+export type { ToolDefinition, ToolHandler } from "./tools/registry.js";
 
 export { ProviderResponse } from "./providers/base.js";
 export type { Provider } from "./providers/base.js";

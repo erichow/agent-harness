@@ -1,34 +1,29 @@
 /**
- * Agent 循环 — 升级版（第 3 章）
+ * Agent 循环 — 第 4 章（ToolRegistry 版）
  *
- * 相比第 2 章的变化：
- *   1. Transcript 现在有 system 字段
- *   2. Message.fromAssistantResponse 一行解决"同时持久化主输出 + ReasoningBlock"
- *   3. tool dispatch 周围的 try/catch 用最小方式解决了第 2 章的 Break 1 和 Break 3
- *      — loop 不再因为"未知工具"或异常崩溃，而是把结构化错误返回给模型让它恢复
+ * 相比第 3 章的变化：
+ *   1. run() 不再接收 tools + toolSchemas 两个参数
+ *      改为一个 ToolRegistry，schema 和 handler 配对注册
+ *   2. 工具校验和错误处理交给 registry.execute()，agent 层不再写 try/catch
  */
 import type { Provider } from "./providers/base.js";
-import { Message, toolResultBlock, Transcript } from "./messages.js";
+import { Message, Transcript } from "./messages.js";
+import type { ToolRegistry } from "./tools/registry.js";
 
 export const MAX_ITERATIONS = 20;
-
-/** 工具函数签名：接收一个参数对象，返回字符串结果 */
-export type ToolFunction = (args: Record<string, unknown>) => string;
 
 /**
  * 运行 agent 循环。
  *
- * @param provider    - 模型供应方（mock 或真实的 provider）
- * @param tools       - 工具名 → 工具函数的映射
- * @param toolSchemas - 工具 schema 列表（传给模型描述可用工具）
+ * @param provider    - 模型供应方
+ * @param registry    - 工具注册中心（同时负责 schema 暴露 + 执行 + 校验）
  * @param userMessage - 用户的起始消息
  * @param system      - 可选的系统 prompt
  * @returns 模型的最终回答
  */
 export function run(
   provider: Provider,
-  tools: Record<string, ToolFunction>,
-  toolSchemas: Record<string, unknown>[],
+  registry: ToolRegistry,
   userMessage: string,
   system?: string,
 ): string {
@@ -36,37 +31,23 @@ export function run(
   transcript.append(Message.userText(userMessage));
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
+    const toolSchemas = registry.getSchemas();
     const response = provider.complete(transcript, toolSchemas);
 
     if (response.isFinal) {
-      // 同时保留 reasoning（如果有）和 final text
       transcript.append(Message.fromAssistantResponse(response));
       return response.text ?? "";
     }
 
-    // 工具调用分支
     if (response.isToolCall) {
       transcript.append(Message.fromAssistantResponse(response));
 
       const toolName = response.toolName!;
       const toolCallId = response.toolCallId ?? `call-${i}`;
 
-      let result: string;
-      let isError = false;
-
-      try {
-        if (!(toolName in tools)) {
-          throw new Error(`unknown tool: ${toolName}`);
-        }
-        result = String(tools[toolName](response.toolArgs ?? {}));
-      } catch (e) {
-        result = (e as Error).message;
-        isError = true;
-      }
-
-      transcript.append(
-        Message.toolResult(toolResultBlock(toolCallId, result, isError)),
-      );
+      // 校验 + 执行一步到位，结果自带 isError 标记
+      const block = registry.execute(toolName, response.toolArgs ?? {}, toolCallId);
+      transcript.append(Message.toolResult(block));
       continue;
     }
 
