@@ -9,12 +9,24 @@
  *   - ToolCallRef — 批量工具调用引用
  *   - accumulate() — 事件流 → ProviderResponse
  *   - StreamEvent 系列 — 5 种流式事件类型
+ *
+ * 第 6 章新增导出：
+ *   - jsonQueryDefinition / jsonQueryHandler — JSON 查询工具
+ *   - ValidationError — 结构化校验错误类型
+ *
+ * 第 7 章新增导出：
+ *   - ContextAccountant / ContextBudget / ContextSnapshot — 上下文窗口记账
+ *   - OnSnapshot — snapshot 回调类型
+ *   - Component / ContextState — 组件和状态类型
  */
 
 export const VERSION = "0.1.0";
 
 export { run, arun, MAX_ITERATIONS } from "./agent.js";
-export type { OnEvent } from "./agent.js";
+export type { OnEvent, OnSnapshot } from "./agent.js";
+
+export { ContextAccountant, ContextBudget, ContextSnapshot } from "./context/accountant.js";
+export type { Component, ContextState } from "./context/accountant.js";
 
 export { ToolRegistry, jsonQueryDefinition, jsonQueryHandler } from "./tools/registry.js";
 export type { ToolDefinition, ToolHandler } from "./tools/registry.js";

@@ -1,12 +1,11 @@
 /**
- * Agent 循环 — 第 5 章（async 版）
+ * Agent 循环 — 第 7 章（context-aware async 版）
  *
- * 相比第 4 章的变化：
- *   1. arun() async — 流式输出 token，provider.astream() + accumulate()
- *   2. 中断处理 — CancelledError 捕获后 partial text checkpoint 到 transcript
- *   3. 批量工具调用 — 迭代 response.toolCalls 数组
- *   4. onEvent / onToolCall / onToolResult 回调 — 让 UI 层可以挂进度条
- *   5. run() 保留为同步 wrapper，使用 toolCalls 数组访问
+ * 相比第 5 章的变化：
+ *   1. + ContextAccountant — 每 turn 前 snapshot token 用量
+ *   2. + onSnapshot 回调 — 每回合触发一次，供 UI/可观测性消费
+ *   3. red state 分支目前为空——第 8 章把 compactor 塞进来
+ *   4. 原有 onEvent / onToolCall / onToolResult 保持不动
  */
 import type { Provider } from "./providers/base.js";
 import { ProviderResponse, accumulate } from "./providers/base.js";
@@ -15,17 +14,20 @@ import { Message, Transcript, toolCallBlock, toolResultBlock } from "./messages.
 import type { Block, ToolCallBlock, ToolResultBlock } from "./messages.js";
 import type { StreamEvent } from "./providers/events.js";
 import { isTextDelta } from "./providers/events.js";
+import { ContextAccountant } from "./context/accountant.js";
+import type { ContextSnapshot } from "./context/accountant.js";
 
 export const MAX_ITERATIONS = 20;
 
 /* ─── 回调类型 ───────────────────────────────────────────────────── */
 
 export type OnEvent = (event: StreamEvent) => void;
+export type OnSnapshot = (snapshot: ContextSnapshot) => void;
 
 /* ─── arun — async loop ──────────────────────────────────────────── */
 
 /**
- * 运行 agent 循环（async 版）。
+ * 运行 agent 循环（async 版，第 7 章升级）。
  *
  * @param provider    - 模型供应方
  * @param registry    - 工具注册中心
@@ -35,6 +37,8 @@ export type OnEvent = (event: StreamEvent) => void;
  * @param onEvent     - 每收到一个 StreamEvent 的回调（UI 进度条用）
  * @param onToolCall  - 工具调用前的回调
  * @param onToolResult- 工具执行完毕的回调
+ * @param onSnapshot  - 每回合 snapshot 后的回调（第 7 章新增）
+ * @param accountant  - 上下文记账员（第 7 章新增）
  * @returns 模型的最终回答
  */
 export async function arun(
@@ -46,13 +50,24 @@ export async function arun(
   onEvent?: OnEvent,
   onToolCall?: (call: ToolCallBlock) => void,
   onToolResult?: (result: ToolResultBlock) => void,
+  onSnapshot?: OnSnapshot,
+  accountant?: ContextAccountant,
 ): Promise<string> {
   if (!transcript) {
     transcript = new Transcript(system);
   }
   transcript.append(Message.userText(userMessage));
 
+  const ctxAccountant = accountant ?? new ContextAccountant();
+
   for (let i = 0; i < MAX_ITERATIONS; i++) {
+    // 第 7 章：每 turn 前 snapshot
+    const snapshot = ctxAccountant.snapshot(transcript, registry.getSchemas());
+    if (onSnapshot) onSnapshot(snapshot);
+    if (snapshot.state === "red") {
+      // 第 8 章：compactor 塞在这里。目前仅观察。
+    }
+
     const partialText: string[] = [];
     let response: ProviderResponse;
 
