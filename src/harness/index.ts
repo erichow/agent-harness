@@ -16,8 +16,9 @@ export const VERSION = "0.1.0";
 export { run, arun, MAX_ITERATIONS } from "./agent.js";
 export type { OnEvent } from "./agent.js";
 
-export { ToolRegistry } from "./tools/registry.js";
+export { ToolRegistry, jsonQueryDefinition, jsonQueryHandler } from "./tools/registry.js";
 export type { ToolDefinition, ToolHandler } from "./tools/registry.js";
+export { ValidationError } from "./tools/validation.js";
 
 export { ProviderResponse, ToolCallRef, accumulate } from "./providers/base.js";
 export type { Provider } from "./providers/base.js";

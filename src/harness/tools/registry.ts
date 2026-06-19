@@ -1,17 +1,17 @@
 /**
- * ToolRegistry — 工具注册中心（第 4 章）
+ * ToolRegistry — 工具注册中心（第 6 章：安全工具执行）
  *
- * 解决的问题：
- *   之前 tools（执行函数）和 toolSchemas（传给模型的结构描述）是两个独立对象，
- *   手动保持同步是 bug 的温床。而且参数没有校验。
+ * 第 6 章新增三大安全机制：
+ *   1. JSON Schema 校验 — dispatch 前检查参数 shape，结构化错误回传（Reflexion 效应）
+ *   2. 未知工具建议 — difflib.get_close_matches 风格，说出 "Did you mean ...?"
+ *   3. 循环检测 — 连续 N 次相同 (工具名 + 参数) 调用 → 注入结构化提示叫模型换策略
  *
- * 一个 registry 管三件事：
- *   1. 配对注册 — schema 和 handler 在同一个 register() 里，不会错位
- *   2. 预先校验 — 调用前检查必填字段，缺了就 isError=true
- *   3. 统一暴露 — getSchemas() 给 provider，execute() 给 agent 循环
+ * 三个机制都插在 execute() 这一个拦截点，无需改工具本身。
  */
 import { toolResultBlock } from "../messages.js";
 import type { ToolResultBlock } from "../messages.js";
+import { validate } from "./validation.js";
+import type { ValidationError } from "./validation.js";
 
 /* ─── 工具定义 ───────────────────────────────────────────────────── */
 
@@ -28,18 +28,22 @@ export interface ToolDefinition {
 /** 工具执行函数 */
 export type ToolHandler = (args: Record<string, unknown>) => string;
 
-/* ─── 校验结果 ───────────────────────────────────────────────────── */
+/* ─── 常量 ───────────────────────────────────────────────────────── */
 
-interface ValidationResult {
-  valid: boolean;
-  error?: string;
-}
+/** 连续相同调用多少次触发循环检测 */
+const MAX_REPEAT_CALLS = 3;
 
 /* ─── Registry ────────────────────────────────────────────────────── */
 
 export class ToolRegistry {
   private definitions: Map<string, ToolDefinition> = new Map();
   private handlers: Map<string, ToolHandler> = new Map();
+
+  /**
+   * 调用历史，格式为 `${toolName}|${JSON.stringify(sorted args)}`。
+   * 仅用于循环检测，保留最近 100 条。
+   */
+  private callHistory: string[] = [];
 
   /**
    * 注册一个工具。
@@ -89,54 +93,256 @@ export class ToolRegistry {
   }
 
   /**
-   * 执行一个工具。
+   * 执行一个工具（第 6 章升级版）。
    *
-   * 与直接调 handler 的区别：
-   *   - 自动校验参数（必填字段）
-   *   - 异常被 try/catch 捕获，不会崩
-   *   - 返回 { result, isError }，直接传给 ToolResultBlock
+   * 4 道闸门：
+   *   1. name 存在?            → 否 → _unknownTool（含 Did you mean?）
+   *   2. args ⊃ schema?        → 否 → _validationFailure（结构化错误回传）
+   *   3. 去重器?                → 是 → _loopDetected（连续 N 次相同调用）
+   *   4. execute               → 异常 → error result（try/catch 兜底）
    */
   execute(
     name: string,
     args: Record<string, unknown>,
     toolCallId: string,
   ): ToolResultBlock {
-    // 1. 检查工具是否存在
+    // 闸门 1：工具是否存在
     if (!this.definitions.has(name)) {
-      return toolResultBlock(toolCallId, `unknown tool: ${name}`, true);
+      return this._unknownTool(name, toolCallId);
     }
 
-    // 2. 参数校验
-    const validation = this.validate(name, args);
-    if (!validation.valid) {
-      return toolResultBlock(toolCallId, validation.error!, true);
+    const tool = this.definitions.get(name)!;
+
+    // 闸门 2：JSON Schema 校验
+    const errors = validate(args, tool.inputSchema);
+    if (errors.length > 0) {
+      return this._validationFailure(name, errors, toolCallId);
     }
 
-    // 3. 执行
+    // 闸门 3：循环检测
+    this._recordCall(name, args);
+    const loopResult = this._checkLoop(name, args, toolCallId);
+    if (loopResult !== null) {
+      return loopResult;
+    }
+
+    // 闸门 4：执行
     try {
       const result = String(this.handlers.get(name)!(args));
       return toolResultBlock(toolCallId, result);
     } catch (e) {
-      return toolResultBlock(toolCallId, (e as Error).message, true);
+      return toolResultBlock(
+        toolCallId,
+        `${name} raised ${(e as Error).constructor.name}: ${(e as Error).message}`,
+        true,
+      );
     }
   }
 
-  /* ─── 内部校验 ─── */
+  /* ─── 内部：未知工具建议 ────────────────────────────────────── */
 
-  private validate(name: string, args: Record<string, unknown>): ValidationResult {
-    const def = this.definitions.get(name)!;
-    const inputSchema = def.inputSchema;
-
-    // 检查必填字段（JSON Schema 的 required 数组）
-    const required: string[] = (
-      (inputSchema.required as string[]) ?? []
+  /**
+   * 未知工具时返回带 "Did you mean ...?" 建议的错误消息。
+   *
+   * 用 Levenshtein 距离找最接近的已注册工具名。
+   * cutoff = 0.5 会拒绝完全不相关的名字。
+   */
+  private _unknownTool(name: string, callId: string): ToolResultBlock {
+    const suggestion = this._fuzzyFindClosest(name);
+    const suggestionText = suggestion
+      ? ` Did you mean '${suggestion}'?`
+      : "";
+    return toolResultBlock(
+      callId,
+      `unknown tool: ${name}.${suggestionText} Available: ${JSON.stringify(this.list())}`,
+      true,
     );
-    for (const key of required) {
-      if (args[key] === undefined || args[key] === null) {
-        return { valid: false, error: `missing required field: ${key}` };
+  }
+
+  /**
+   * 用 Levenshtein 距离找最接近的工具名。
+   * cutoff = 0.5（归一化距离 >= 0.5 才算接近）。
+   */
+  private _fuzzyFindClosest(name: string): string | undefined {
+    const names = this.list();
+    if (names.length === 0) return undefined;
+
+    let best: string | undefined;
+    let bestScore = 0;
+    for (const candidate of names) {
+      const score = this._similarity(name, candidate);
+      if (score > bestScore) {
+        bestScore = score;
+        best = candidate;
       }
     }
-
-    return { valid: true };
+    return bestScore >= 0.5 ? best : undefined;
   }
+
+  /**
+   * 最长公共子序列（LCS）比值的相似度。
+   * 匹配 Python difflib.SequenceMatcher.ratio() 的行为。
+   * ratio = 2 * LCS.length / (a.length + b.length)
+   * 1 = 完全相同，0 = 完全无关。
+   *
+   * 对 'calculator' vs 'calc' 产生 ~0.571，通过 0.5 cutoff。
+   */
+  private _similarity(a: string, b: string): number {
+    if (a === b) return 1;
+    if (a.length === 0 || b.length === 0) return 0;
+    const lcsLen = this._lcsLength(a, b);
+    return (2 * lcsLen) / (a.length + b.length);
+  }
+
+  /** LCS 长度（动态规划） */
+  private _lcsLength(a: string, b: string): number {
+    const m = a.length;
+    const n = b.length;
+    const dp: number[][] = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+    for (let i = 1; i <= m; i++) {
+      for (let j = 1; j <= n; j++) {
+        dp[i][j] = a[i - 1] === b[j - 1]
+          ? dp[i - 1][j - 1] + 1
+          : Math.max(dp[i - 1][j], dp[i][j - 1]);
+      }
+    }
+    return dp[m][n];
+  }
+
+  /* ─── 内部：校验失败 ────────────────────────────────────────── */
+
+  /**
+   * 校验失败时返回结构化错误消息。
+   *
+   * 多个错误合并为一条消息——模型从"一条列出三件事"学得比
+   * "连续 3 个回合各修一个"快得多。
+   */
+  private _validationFailure(
+    name: string,
+    errors: ValidationError[],
+    callId: string,
+  ): ToolResultBlock {
+    const summary = errors.map((e) => e.toString()).join("; ");
+    return toolResultBlock(
+      callId,
+      `${name}: invalid arguments. ${summary}`,
+      true,
+    );
+  }
+
+  /* ─── 内部：循环检测 ────────────────────────────────────────── */
+
+  /**
+   * 记录一次工具调用到历史。
+   * key = `${name}|${JSON.stringify(sorted args)}`
+   */
+  private _recordCall(name: string, args: Record<string, unknown>): void {
+    const key = `${name}|${JSON.stringify(args, Object.keys(args).sort())}`;
+    this.callHistory.push(key);
+    if (this.callHistory.length > 100) {
+      this.callHistory = this.callHistory.slice(-100);
+    }
+  }
+
+  /**
+   * 检查是否检测到工具调用循环。
+   *
+   * 使用精确匹配——模糊匹配会把"真正的前进"误判为"循环"，
+   * 误报比漏报更糟。
+   *
+   * @returns ToolResultBlock 如果检测到循环，null 否则。
+   */
+  private _checkLoop(
+    name: string,
+    args: Record<string, unknown>,
+    callId: string,
+  ): ToolResultBlock | null {
+    if (this.callHistory.length < MAX_REPEAT_CALLS) return null;
+
+    const key = `${name}|${JSON.stringify(args, Object.keys(args).sort())}`;
+    const recent = this.callHistory.slice(-MAX_REPEAT_CALLS);
+    const repeats = recent.filter((k) => k === key).length;
+
+    if (repeats >= MAX_REPEAT_CALLS) {
+      return toolResultBlock(
+        callId,
+        `tool-call loop detected: ${name} called with identical arguments ${MAX_REPEAT_CALLS} times in a row. Try a different approach or different arguments, or stop and return your current best answer.`,
+        true,
+      );
+    }
+    return null;
+  }
+}
+
+/* ─── json_query 工具 ────────────────────────────────────────────── */
+
+/**
+ * json_query: 用简单 dot-path 表达式查询 JSON 数据。
+ *
+ * 第 6 章新增的示例工具，用于压力测试 registry 的校验能力
+ * ——schema 有两个必填字符串、形状具体，失败模式（JSON 无效、
+ * 路径不存在）validator 和工具会各分一份。
+ */
+export const jsonQueryDefinition: ToolDefinition = {
+  name: "json_query",
+  description:
+    "Query JSON data with a simple dot-path expression. e.g. 'items.0.name' or 'user.email'",
+  inputSchema: {
+    type: "object",
+    properties: {
+      data: {
+        type: "string",
+        description: "A JSON string (object or array).",
+      },
+      path: {
+        type: "string",
+        description:
+          "A dot-separated path; e.g. 'items.0.name' or 'user.email'. Array indices are integers.",
+      },
+    },
+    required: ["data", "path"],
+  },
+};
+
+/**
+ * json_query 执行函数。
+ *
+ * 副作用：无（纯读取）。
+ * ajv 只检查 data 是字符串类型，JSON.parse 失败在工具内处理。
+ */
+export function jsonQueryHandler(
+  args: Record<string, unknown>,
+): string {
+  const data = String(args.data);
+  const path = String(args.path);
+
+  let obj: unknown;
+  try {
+    obj = JSON.parse(data);
+  } catch {
+    return `json_query: invalid JSON in 'data'`;
+  }
+
+  const parts = path.split(".");
+  let current: unknown = obj;
+
+  for (const part of parts) {
+    if (Array.isArray(current)) {
+      const idx = parseInt(part, 10);
+      if (isNaN(idx) || idx < 0 || idx >= current.length) {
+        return `json_query: path not found: index ${part} out of range`;
+      }
+      current = current[idx];
+    } else if (typeof current === "object" && current !== null) {
+      const record = current as Record<string, unknown>;
+      if (!(part in record)) {
+        return `json_query: path not found: key '${part}' does not exist`;
+      }
+      current = record[part];
+    } else {
+      return `json_query: cannot index ${typeof current} with '${part}'`;
+    }
+  }
+
+  return JSON.stringify(current);
 }

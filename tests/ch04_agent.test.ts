@@ -1,9 +1,13 @@
 /**
  * 第 4 章测试 — ToolRegistry + agent 集成
+ *
+ * 第 5 章迁移：ProviderResponse 构造函数签名改为 toolCalls 数组
+ *   old: new ProviderResponse(text?, toolCallId?, toolName?, toolArgs?, ...)
+ *   new: new ProviderResponse(text?, toolCalls: ToolCallRef[] = [], ...)
  */
 import { describe, it, expect } from "vitest";
 import { run, MAX_ITERATIONS } from "../src/harness/agent.js";
-import { ProviderResponse } from "../src/harness/providers/base.js";
+import { ProviderResponse, ToolCallRef } from "../src/harness/providers/base.js";
 import { MockProvider } from "../src/harness/providers/mock.js";
 import { ToolRegistry } from "../src/harness/tools/registry.js";
 
@@ -73,7 +77,8 @@ describe("ToolRegistry", () => {
 
     const block = registry.execute("greet", {}, "call-1");
     expect(block.isError).toBe(true);
-    expect(block.content).toContain("missing required field");
+    expect(block.content).toContain("invalid arguments");
+    expect(block.content).toContain("required property");
   });
 
   it("execute catches handler exceptions", () => {
@@ -85,7 +90,7 @@ describe("ToolRegistry", () => {
 
     const block = registry.execute("faulty", {}, "call-1");
     expect(block.isError).toBe(true);
-    expect(block.content).toBe("kaboom");
+    expect(block.content).toBe("faulty raised Error: kaboom");
   });
 
   it("list returns all tool names", () => {
@@ -141,7 +146,7 @@ describe("agent loop (Chapter 4 — ToolRegistry)", () => {
     );
 
     const mock = new MockProvider([
-      new ProviderResponse(undefined, "call-1", "echo", { msg: "hello" }),
+      new ProviderResponse(undefined, [new ToolCallRef("call-1", "echo", { msg: "hello" })]),
       new ProviderResponse("echoed: hello"),
     ]);
 
@@ -151,7 +156,7 @@ describe("agent loop (Chapter 4 — ToolRegistry)", () => {
   it("returns error to model when tool is unknown (no crash)", () => {
     const registry = new ToolRegistry();
     const mock = new MockProvider([
-      new ProviderResponse(undefined, "call-1", "nonexistent", {}),
+      new ProviderResponse(undefined, [new ToolCallRef("call-1", "nonexistent", {})]),
       new ProviderResponse("I see it's not available."),
     ]);
 
@@ -175,7 +180,7 @@ describe("agent loop (Chapter 4 — ToolRegistry)", () => {
 
     // 模型忘记传 name 参数
     const mock = new MockProvider([
-      new ProviderResponse(undefined, "call-1", "greet", {}),
+      new ProviderResponse(undefined, [new ToolCallRef("call-1", "greet", {})]),
       new ProviderResponse("Sorry, I need a name."),
     ]);
 
@@ -190,7 +195,7 @@ describe("agent loop (Chapter 4 — ToolRegistry)", () => {
     );
 
     const mock = new MockProvider([
-      new ProviderResponse(undefined, "call-1", "faulty", {}),
+      new ProviderResponse(undefined, [new ToolCallRef("call-1", "faulty", {})]),
       new ProviderResponse("Fixed it."),
     ]);
 
@@ -206,7 +211,7 @@ describe("agent loop (Chapter 4 — ToolRegistry)", () => {
 
     const responses = Array.from(
       { length: MAX_ITERATIONS + 1 },
-      (_, i) => new ProviderResponse(undefined, `call-${i}`, "ping", {}),
+      (_, i) => new ProviderResponse(undefined, [new ToolCallRef(`call-${i}`, "ping", {})]),
     );
     const mock = new MockProvider(responses);
 
