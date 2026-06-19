@@ -1,11 +1,11 @@
 /**
- * Agent 循环 — 第 7 章（context-aware async 版）
+ * Agent 循环 — 第 8 章（compaction-aware async 版）
  *
- * 相比第 5 章的变化：
- *   1. + ContextAccountant — 每 turn 前 snapshot token 用量
- *   2. + onSnapshot 回调 — 每回合触发一次，供 UI/可观测性消费
- *   3. red state 分支目前为空——第 8 章把 compactor 塞进来
- *   4. 原有 onEvent / onToolCall / onToolResult 保持不动
+ * 相比第 7 章的变化：
+ *   1. + Compactor — red state 时自动压缩（mask→summarize）
+ *   2. + onCompaction 回调 — 通知观察者压缩结果
+ *   3. 压缩后发送二次 snapshot（决策帧 + 效果帧）
+ *   4. 原有 onEvent / onToolCall / onToolResult / onSnapshot 保持不动
  */
 import type { Provider } from "./providers/base.js";
 import { ProviderResponse, accumulate } from "./providers/base.js";
@@ -16,6 +16,8 @@ import type { StreamEvent } from "./providers/events.js";
 import { isTextDelta } from "./providers/events.js";
 import { ContextAccountant } from "./context/accountant.js";
 import type { ContextSnapshot } from "./context/accountant.js";
+import { Compactor } from "./context/compactor.js";
+import type { CompactionResult } from "./context/compactor.js";
 
 export const MAX_ITERATIONS = 20;
 
@@ -23,11 +25,12 @@ export const MAX_ITERATIONS = 20;
 
 export type OnEvent = (event: StreamEvent) => void;
 export type OnSnapshot = (snapshot: ContextSnapshot) => void;
+export type OnCompaction = (result: CompactionResult) => void;
 
 /* ─── arun — async loop ──────────────────────────────────────────── */
 
 /**
- * 运行 agent 循环（async 版，第 7 章升级）。
+ * 运行 agent 循环（async 版，第 8 章升级）。
  *
  * @param provider    - 模型供应方
  * @param registry    - 工具注册中心
@@ -39,6 +42,8 @@ export type OnSnapshot = (snapshot: ContextSnapshot) => void;
  * @param onToolResult- 工具执行完毕的回调
  * @param onSnapshot  - 每回合 snapshot 后的回调（第 7 章新增）
  * @param accountant  - 上下文记账员（第 7 章新增）
+ * @param compactor   - 压缩协调者（第 8 章新增）
+ * @param onCompaction- 压缩完成后的回调（第 8 章新增）
  * @returns 模型的最终回答
  */
 export async function arun(
@@ -52,6 +57,8 @@ export async function arun(
   onToolResult?: (result: ToolResultBlock) => void,
   onSnapshot?: OnSnapshot,
   accountant?: ContextAccountant,
+  compactor?: Compactor,
+  onCompaction?: OnCompaction,
 ): Promise<string> {
   if (!transcript) {
     transcript = new Transcript(system);
@@ -59,13 +66,23 @@ export async function arun(
   transcript.append(Message.userText(userMessage));
 
   const ctxAccountant = accountant ?? new ContextAccountant();
+  const ctxCompactor = compactor ?? new Compactor(ctxAccountant, provider);
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
     // 第 7 章：每 turn 前 snapshot
     const snapshot = ctxAccountant.snapshot(transcript, registry.getSchemas());
     if (onSnapshot) onSnapshot(snapshot);
     if (snapshot.state === "red") {
-      // 第 8 章：compactor 塞在这里。目前仅观察。
+      // 第 8 章：压缩
+      const result = await ctxCompactor.compactIfNeeded(
+        transcript,
+        registry.getSchemas(),
+      );
+      if (onCompaction) onCompaction(result);
+      // 再发一次 snapshot 让观察者看到压缩后的状态（效果帧）
+      if (onSnapshot) {
+        onSnapshot(ctxAccountant.snapshot(transcript, registry.getSchemas()));
+      }
     }
 
     const partialText: string[] = [];

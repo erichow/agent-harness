@@ -27,6 +27,11 @@ export type { OnEvent, OnSnapshot } from "./agent.js";
 
 export { ContextAccountant, ContextBudget, ContextSnapshot } from "./context/accountant.js";
 export type { Component, ContextState } from "./context/accountant.js";
+export { Compactor } from "./context/compactor.js";
+export type { CompactionResult } from "./context/compactor.js";
+export { maskOlderResults } from "./context/masking.js";
+export { summarizePrefix } from "./context/summarizer.js";
+export type { SummarizationResult } from "./context/summarizer.js";
 
 export { ToolRegistry, jsonQueryDefinition, jsonQueryHandler } from "./tools/registry.js";
 export type { ToolDefinition, ToolHandler } from "./tools/registry.js";
