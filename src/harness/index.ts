@@ -3,18 +3,27 @@
  *
  * 从 Python 教程《构建 AI Agent Harness · 可视化学习教程》改编而来。
  * 逐章将 Python 实现转写为 TypeScript。
+ *
+ * 第 5 章新增导出：
+ *   - arun() — async agent 循环
+ *   - ToolCallRef — 批量工具调用引用
+ *   - accumulate() — 事件流 → ProviderResponse
+ *   - StreamEvent 系列 — 5 种流式事件类型
  */
 
 export const VERSION = "0.1.0";
 
-export { run, MAX_ITERATIONS } from "./agent.js";
+export { run, arun, MAX_ITERATIONS } from "./agent.js";
+export type { OnEvent } from "./agent.js";
 
 export { ToolRegistry } from "./tools/registry.js";
 export type { ToolDefinition, ToolHandler } from "./tools/registry.js";
 
-export { ProviderResponse } from "./providers/base.js";
+export { ProviderResponse, ToolCallRef, accumulate } from "./providers/base.js";
 export type { Provider } from "./providers/base.js";
 export { MockProvider } from "./providers/mock.js";
+export { FallbackProvider } from "./providers/fallback.js";
+export { withRetry, isRetryable, backoffDelay } from "./providers/retry.js";
 
 export {
   Message,
@@ -32,3 +41,21 @@ export type {
   ReasoningBlock,
   Role,
 } from "./messages.js";
+
+/* ─── 第 5 章：StreamEvent 类型 ──────────────────────────────────── */
+
+export {
+  textDelta,
+  reasoningDelta,
+  toolCallStart,
+  toolCallDelta,
+  completed,
+} from "./providers/events.js";
+export type {
+  StreamEvent,
+  TextDelta,
+  ReasoningDelta,
+  ToolCallStart,
+  ToolCallDelta,
+  Completed,
+} from "./providers/events.js";
