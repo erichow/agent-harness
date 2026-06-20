@@ -18,6 +18,9 @@
  *   - ContextAccountant / ContextBudget / ContextSnapshot — 上下文窗口记账
  *   - OnSnapshot — snapshot 回调类型
  *   - Component / ContextState — 组件和状态类型
+ *
+ * 第 9 章新增导出：
+ *   - Scratchpad — 持久化 KV 存储（外部状态）
  */
 
 export const VERSION = "0.1.0";
@@ -36,6 +39,7 @@ export type { SummarizationResult } from "./context/summarizer.js";
 export { ToolRegistry, jsonQueryDefinition, jsonQueryHandler } from "./tools/registry.js";
 export type { ToolDefinition, ToolHandler } from "./tools/registry.js";
 export { ValidationError } from "./tools/validation.js";
+export { Scratchpad } from "./tools/scratchpad.js";
 
 export { ProviderResponse, ToolCallRef, accumulate } from "./providers/base.js";
 export type { Provider } from "./providers/base.js";
