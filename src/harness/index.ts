@@ -42,6 +42,13 @@
  *   - MCPTool — MCP 工具类型
  *   - wrapMcpTools — MCP 工具包装器
  *   - AsyncToolHandler — 异步工具 handler 类型
+ *
+ * 第 14 章新增导出：
+ *   - PermissionManager — 权限管理器
+ *   - PermissionRequest / PermissionOutcome / Decision — 权限类型
+ *   - allowAll / denyAll / bySideEffect / pathAllowlist / compose — 策略函数
+ *   - wrapIfUntrusted — trust label 包装
+ *   - defaultCliPrompt / autoAllowPrompt — 人 in loop 提示
  */
 
 export const VERSION = "0.1.0";
@@ -71,6 +78,12 @@ export type { CatalogEntry } from "./tools/selector.js";
 export { MCPClient } from "./mcp/client.js";
 export type { MCPServerConfig, MCPTool } from "./mcp/client.js";
 export { wrapMcpTools } from "./mcp/tools.js";
+export { PermissionManager } from "./permissions/manager.js";
+export type { PermissionRequest, PermissionOutcome, Decision, HumanPrompt } from "./permissions/model.js";
+export { allowAll, denyAll, bySideEffect, pathAllowlist, compose } from "./permissions/policy.js";
+export type { Policy } from "./permissions/policy.js";
+export { wrapIfUntrusted } from "./permissions/trust.js";
+export { defaultCliPrompt, autoAllowPrompt } from "./permissions/manager.js";
 
 export { ProviderResponse, ToolCallRef, accumulate } from "./providers/base.js";
 export type { Provider } from "./providers/base.js";

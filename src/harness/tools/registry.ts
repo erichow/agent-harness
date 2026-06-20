@@ -42,6 +42,8 @@ export class ToolRegistry {
   private definitions: Map<string, ToolDefinition> = new Map();
   private handlers: Map<string, ToolHandler> = new Map();
   private asyncHandlers: Map<string, AsyncToolHandler> = new Map();
+  /** 可选的权限管理器（第 14 章） */
+  permissionManager?: import("../permissions/manager.js").PermissionManager;
 
   /**
    * 调用历史，格式为 `${toolName}|${JSON.stringify(sorted args)}`。
@@ -158,8 +160,12 @@ export class ToolRegistry {
   /**
    * 异步执行一个工具。
    *
-   * 4 道闸门同 execute()，但 handler 优先使用 asyncHandler。
-   * 适用于 MCP 工具等 async IO 场景。
+   * 5 道闸门（第 14 章新增权限闸）：
+   *   1. name 存在?            → 否 → _unknownTool
+   *   2. args ⊃ schema?        → 否 → _validationFailure
+   *   3. permission 通过?       → 否 → permission denied
+   *   4. 去重器?                → 是 → _loopDetected
+   *   5. execute               → 异常 → error result（含 trust label）
    */
   async executeAsync(
     name: string,
@@ -179,6 +185,20 @@ export class ToolRegistry {
       return this._validationFailure(name, errors, toolCallId);
     }
 
+    // 闸门 2.5：权限检查（第 14 章）
+    if (this.permissionManager) {
+      const sideEffects = this._inferSideEffects(name);
+      const outcome = await this.permissionManager.check(name, args, sideEffects);
+      if (outcome.decision === "deny") {
+        return toolResultBlock(
+          toolCallId,
+          `${name}: permission denied — ${outcome.reason}`,
+          true,
+        );
+      }
+      // ask 已由 manager 内部升级为 allow/deny
+    }
+
     // 闸门 3：循环检测
     this._recordCall(name, args);
     const loopResult = this._checkLoop(name, args, toolCallId);
@@ -189,13 +209,20 @@ export class ToolRegistry {
     // 闸门 4：执行（async handler 优先）
     try {
       const asyncHandler = this.asyncHandlers.get(name);
+      let content: string;
       if (asyncHandler) {
-        const result = await asyncHandler(args);
-        return toolResultBlock(toolCallId, String(result));
+        content = String(await asyncHandler(args));
+      } else {
+        // 回退到 sync handler
+        content = String(this.handlers.get(name)!(args));
       }
-      // 回退到 sync handler
-      const result = String(this.handlers.get(name)!(args));
-      return toolResultBlock(toolCallId, result);
+
+      // Trust label 包装（第 14 章）
+      const sideEffects = this._inferSideEffects(name);
+      const { wrapIfUntrusted } = await import("../permissions/trust.js");
+      content = wrapIfUntrusted(name, sideEffects, content);
+
+      return toolResultBlock(toolCallId, content);
     } catch (e) {
       return toolResultBlock(
         toolCallId,
@@ -294,6 +321,31 @@ export class ToolRegistry {
       `${name}: invalid arguments. ${summary}`,
       true,
     );
+  }
+
+  /* ─── 内部：推断 side effects ────────────────────────────────── */
+
+  /**
+   * 从工具名/描述推断 side effects。
+   *
+   * 理想情况下每个工具注册时显式声明 side effects；为现有工具
+   * 提供合理默认。MCP 工具名含 `mcp__` 前缀默认 network + mutate；
+   * 文件工具默认 filesystem。
+   */
+  private _inferSideEffects(name: string): string[] {
+    if (name.startsWith("mcp__")) {
+      return ["network", "mutate"];
+    }
+    if (name.startsWith("read_file") || name === "scratchpad_list" || name === "scratchpad_read") {
+      return ["read"];
+    }
+    if (name === "edit_lines" || name === "scratchpad_write") {
+      return ["write"];
+    }
+    if (name === "search_docs") {
+      return ["read"];
+    }
+    return [];
   }
 
   /* ─── 内部：循环检测 ────────────────────────────────────────── */
