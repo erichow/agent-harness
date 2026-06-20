@@ -28,10 +28,16 @@ function _tokenize(text: string): string[] {
  *
  * ToolRegistry 只保存已注册的工具，而 ToolCatalog 需要有能力
  * 在每回合动态选取后创建临时 registry——因此必须持 handler。
+ *
+ * handler + asyncHandler：工具可以是同步或异步的。
+ * MCP 工具通过 asyncHandler 路径执行（异步 IO）。
+ * 纯本地工具（calc、fileViewport）使用 sync handler。
  */
 export interface CatalogEntry {
   definition: ToolDefinition;
   handler: ToolHandler;
+  /** 可选的异步 handler（MCP 工具等 async IO 场景） */
+  asyncHandler?: (args: Record<string, unknown>) => Promise<string>;
 }
 
 /* ─── ToolCatalog ────────────────────────────────────────────────── */

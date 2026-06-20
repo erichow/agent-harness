@@ -28,6 +28,9 @@ export interface ToolDefinition {
 /** 工具执行函数 */
 export type ToolHandler = (args: Record<string, unknown>) => string;
 
+/** 异步工具执行函数 */
+export type AsyncToolHandler = (args: Record<string, unknown>) => Promise<string>;
+
 /* ─── 常量 ───────────────────────────────────────────────────────── */
 
 /** 连续相同调用多少次触发循环检测 */
@@ -38,6 +41,7 @@ const MAX_REPEAT_CALLS = 3;
 export class ToolRegistry {
   private definitions: Map<string, ToolDefinition> = new Map();
   private handlers: Map<string, ToolHandler> = new Map();
+  private asyncHandlers: Map<string, AsyncToolHandler> = new Map();
 
   /**
    * 调用历史，格式为 `${toolName}|${JSON.stringify(sorted args)}`。
@@ -66,6 +70,18 @@ export class ToolRegistry {
     }
     this.definitions.set(def.name, def);
     this.handlers.set(def.name, handler);
+  }
+
+  /**
+   * 注册一个异步工具。
+   * async handler 在 executeAsync() 中被调用。
+   */
+  aregister(def: ToolDefinition, handler: AsyncToolHandler): void {
+    if (this.definitions.has(def.name)) {
+      throw new Error(`tool already registered: ${def.name}`);
+    }
+    this.definitions.set(def.name, def);
+    this.asyncHandlers.set(def.name, handler);
   }
 
   /** 获取工具定义 */
@@ -128,6 +144,56 @@ export class ToolRegistry {
 
     // 闸门 4：执行
     try {
+      const result = String(this.handlers.get(name)!(args));
+      return toolResultBlock(toolCallId, result);
+    } catch (e) {
+      return toolResultBlock(
+        toolCallId,
+        `${name} raised ${(e as Error).constructor.name}: ${(e as Error).message}`,
+        true,
+      );
+    }
+  }
+
+  /**
+   * 异步执行一个工具。
+   *
+   * 4 道闸门同 execute()，但 handler 优先使用 asyncHandler。
+   * 适用于 MCP 工具等 async IO 场景。
+   */
+  async executeAsync(
+    name: string,
+    args: Record<string, unknown>,
+    toolCallId: string,
+  ): Promise<ToolResultBlock> {
+    // 闸门 1：工具是否存在
+    if (!this.definitions.has(name)) {
+      return this._unknownTool(name, toolCallId);
+    }
+
+    const tool = this.definitions.get(name)!;
+
+    // 闸门 2：JSON Schema 校验
+    const errors = validate(args, tool.inputSchema);
+    if (errors.length > 0) {
+      return this._validationFailure(name, errors, toolCallId);
+    }
+
+    // 闸门 3：循环检测
+    this._recordCall(name, args);
+    const loopResult = this._checkLoop(name, args, toolCallId);
+    if (loopResult !== null) {
+      return loopResult;
+    }
+
+    // 闸门 4：执行（async handler 优先）
+    try {
+      const asyncHandler = this.asyncHandlers.get(name);
+      if (asyncHandler) {
+        const result = await asyncHandler(args);
+        return toolResultBlock(toolCallId, String(result));
+      }
+      // 回退到 sync handler
       const result = String(this.handlers.get(name)!(args));
       return toolResultBlock(toolCallId, result);
     } catch (e) {

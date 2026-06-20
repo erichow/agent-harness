@@ -137,13 +137,20 @@ export async function arun(
 
     transcript.append(Message.fromAssistantResponse(response));
 
-    // 逐个派发工具调用
+    // 逐个派发工具调用（第 13 章：支持 async handler）
     for (const ref of response.toolCalls) {
       const call = toolCallBlock(ref.id, ref.name, ref.args);
       if (onToolCall) onToolCall(call);
 
-      // catalog 模式：如果工具不在 turnRegistry 里，尝试从 catalog 派发
-      const result = _dispatchWithFallback(ref.name, ref.args, ref.id, turnRegistry, catalog);
+      // catalog 模式：使用 async dispatch（MCP 工具需要）
+      let result: { content: string; isError: boolean };
+      if (catalog) {
+        result = await _dispatchWithFallbackAsync(ref.name, ref.args, ref.id, turnRegistry, catalog);
+      } else {
+        const block = turnRegistry.execute(ref.name, ref.args, ref.id);
+        result = { content: block.content, isError: block.isError };
+      }
+
       const resultBlock = toolResultBlock(ref.id, result.content, result.isError);
       transcript.append(Message.toolResult(resultBlock));
       if (onToolResult) onToolResult(resultBlock);
@@ -174,7 +181,12 @@ function _resolveTurnRegistry(
     const selected = catalog.select(query, toolsPerTurn ?? 7, pinnedTools);
     const reg = new ToolRegistry();
     for (const entry of selected) {
-      reg.register(entry.definition, entry.handler);
+      // async handler 优先——MCP 工具走此路径
+      if (entry.asyncHandler) {
+        reg.aregister(entry.definition, entry.asyncHandler);
+      } else {
+        reg.register(entry.definition, entry.handler);
+      }
     }
     return reg;
   }
@@ -184,21 +196,21 @@ function _resolveTurnRegistry(
 /* ─── 工具派发（含 fallback） ───────────────────────────────────── */
 
 /**
- * 派发工具调用。
- * - 优先用 turnRegistry
- * - catalog 模式：如果 turnRegistry 没有该工具，从 catalog 查找
+ * 异步派发工具调用。
+ * - 优先用 turnRegistry 的 executeAsync
+ * - catalog 模式：如果 turnRegistry 没有该工具，从 catalog 查找 asyncHandler
  *   这是 try-fail-retry 机制——模型调了没被选中的工具时自动恢复
  */
-function _dispatchWithFallback(
+async function _dispatchWithFallbackAsync(
   name: string,
   args: Record<string, unknown>,
   callId: string,
   turnRegistry: ToolRegistry,
   catalog: ToolCatalog | null,
-): { content: string; isError: boolean } {
-  // 先在 turnRegistry 中执行
+): Promise<{ content: string; isError: boolean }> {
+  // 先在 turnRegistry 中执行（async）
   if (turnRegistry.has(name)) {
-    const result = turnRegistry.execute(name, args, callId);
+    const result = await turnRegistry.executeAsync(name, args, callId);
     return { content: result.content, isError: result.isError };
   }
 
@@ -206,6 +218,18 @@ function _dispatchWithFallback(
   if (catalog) {
     const entry = catalog.get(name);
     if (entry) {
+      if (entry.asyncHandler) {
+        try {
+          const content = await entry.asyncHandler(args);
+          return { content: String(content), isError: false };
+        } catch (e) {
+          return {
+            content: `${name} raised ${(e as Error).constructor.name}: ${(e as Error).message}`,
+            isError: true,
+          };
+        }
+      }
+      // sync fallback
       try {
         const content = String(entry.handler(args));
         return { content, isError: false };

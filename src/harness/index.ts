@@ -35,6 +35,13 @@
  *   - queryFromTranscript — 从对话历史提取检索 query
  *   - createDiscoveryEntry — discovery 工具工厂
  *   - CatalogEntry — 目录条目类型
+ *
+ * 第 13 章新增导出：
+ *   - MCPClient — MCP 客户端（stdio + JSON-RPC）
+ *   - MCPServerConfig — MCP 服务器配置类型
+ *   - MCPTool — MCP 工具类型
+ *   - wrapMcpTools — MCP 工具包装器
+ *   - AsyncToolHandler — 异步工具 handler 类型
  */
 
 export const VERSION = "0.1.0";
@@ -51,7 +58,7 @@ export { summarizePrefix } from "./context/summarizer.js";
 export type { SummarizationResult } from "./context/summarizer.js";
 
 export { ToolRegistry, jsonQueryDefinition, jsonQueryHandler } from "./tools/registry.js";
-export type { ToolDefinition, ToolHandler } from "./tools/registry.js";
+export type { ToolDefinition, ToolHandler, AsyncToolHandler } from "./tools/registry.js";
 export { ValidationError } from "./tools/validation.js";
 export { Scratchpad } from "./tools/scratchpad.js";
 
@@ -61,6 +68,9 @@ export { RetrievalInterface } from "./tools/retrieval.js";
 export { fileViewportTool, editLinesTool } from "./tools/files.js";
 export { ToolCatalog, queryFromTranscript, createDiscoveryEntry } from "./tools/selector.js";
 export type { CatalogEntry } from "./tools/selector.js";
+export { MCPClient } from "./mcp/client.js";
+export type { MCPServerConfig, MCPTool } from "./mcp/client.js";
+export { wrapMcpTools } from "./mcp/tools.js";
 
 export { ProviderResponse, ToolCallRef, accumulate } from "./providers/base.js";
 export type { Provider } from "./providers/base.js";
