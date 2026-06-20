@@ -5,99 +5,59 @@
 
 ---
 
-## 解决了什么
+## 为什么需要这个
 
-ch02 的朴素版 loop 有 5 个"一定会破"的设计缺陷。ch03 堵上了前 2 个：
+上一章的 agent 循环能跑了，但有个基础问题没解决：**对话历史里存的消息长什么样，没有统一标准。**
 
-| ch02 的问题 | ch03 怎么修的 |
-|---|---|
-| **transcript 是 `Record[]`** — 没有语义类型，工具调用和文本回答在代码里长一个样，接入新厂商要重写整个 transcript | 引入 `Block` / `Message` / `Transcript` 三层架构，语义和传输格式分离 |
-| **工具调度没防护** — 模型喊了个不存在的工具 → 循环崩；工具函数抛异常 → 循环崩 | `try/catch` 包裹调度，错误结构化为 `ToolResultBlock(isError=true)` 还给模型，让它自己决定下一步 |
+不同的消息有不同的结构：
 
-## 核心设计：Block 是语义，role 是传输细节
+- 用户说了一句话 → 一段文字
+- 模型要调工具 → 工具名 + 参数
+- 工具返回结果 → 调用 ID + 内容 + 是否出错
+- 模型在推理 → 推理过程的文字
 
-ch02 存的是"谁说了什么"：
+如果这些都用同一个格式存，后面处理起来很痛苦——你得猜"这条消息到底是什么类型"。
 
-```typescript
-{ role: "assistant", content: [{ type: "tool_use", name: "calc", input: {...} }] }
-{ role: "user", content: [{ type: "tool_result", content: "4" }] }
-```
+---
 
-这在只接 Anthropic 时没问题。但 OpenAI 要求 tool_result 挂在 `role: "tool"` 下，Gemini 又不一样。如果 transcript 跟某个厂商的格式绑定死了，每接一家新厂商就得重写 transcript 处理逻辑。
+## 怎么解决的
 
-ch03 换了个思路：**存"发生了什么"，不管"谁说的"**。4 种 Block 分别是：
+### 四种消息类型
 
-| Block | 代表什么 | 关键字段 |
-|---|---|---|
-| `TextBlock` | 一段文本 | `text` |
-| `ToolCallBlock` | 模型要调一个工具 | `id` / `name` / `args` |
-| `ToolResultBlock` | 工具执行的结果 | `content` / `isError` |
-| `ReasoningBlock` | 模型的推理过程 | `text` / `metadata` |
+把对话里的每一条消息分成 4 种明确的类型：
 
-Message 的 `role` 只是传输标记——发出去的时候 adapter 按目标厂商的规则把它映射成对应的角色。Transcript 本身不关心你用哪家。
+| 类型 | 包含什么 | 例子 |
+|------|----------|------|
+| **文本** | 一段文字 | 你说的"今天天气怎么样" |
+| **工具调用** | 要调哪个工具 + 参数 | `calc(expression="1+1")` |
+| **工具结果** | 调用 ID + 内容 + 是否出错 | 计算器返回 "2" |
+| **推理过程** | 模型的思考过程 | "用户问天气，我需要查一下..." |
 
-## 三个实际好处
+每种类型有固定的结构，一看 `kind` 字段就知道怎么处理。
 
-### 1. 工具异常不再是核弹
+### 消息不可变
 
-ch02 里模型喊了个不存在的工具 → 直接抛异常，整个 loop 终止。ch03 里：
+一条消息一旦创建就不能改了。想"改"？只能新建一条替换掉它。
 
-```typescript
-try {
-  result = tools[toolName](args);
-} catch (e) {
-  result = e.message;
-  isError = true;  // ← 不是崩溃，是结构化反馈
-}
-```
+这听起来有点死板，但好处很大：
+- 不用担心某段代码意外修改了历史
+- 调试时可以放心地回头看之前发生了什么
+- 并发安全——两条线程不会同时改同一条消息
 
-模型在下一轮通过 `ToolResultBlock(isError=true)` 看到错误，可以重试、换工具、或告诉用户办不到。**agent 层不需要写 if-else 错误路由。**
+### 从错误中恢复
 
-### 2. 推理模型的"内心独白"有地方放
+这一章还做了一个重要的改进：**当模型返回的内容格式不对时，不崩溃，而是把它当做普通文本处理。**
 
-DeepSeek R1、Anthropic Extended Thinking 在给最终答案前会输出一段思考过程。ch02 的 `Record[]` 没有位置放这个——要么跟正常文本混在一起，要么丢掉。
+比如模型偶尔会返回意外的格式——多了一段不该有的文字、少了一个必填字段。之前的做法是抛异常，现在是把能理解的部分正常处理，不能理解的部分作为文本消息保留。这样即使出了小问题，对话还能继续下去。
 
-ch03 的 `ReasoningBlock` 专门兜这个：
+---
 
-```typescript
-// blocks: [ReasoningBlock("用户需要计算…"), TextBlock("答案是 42。")]
-Message.assistantText("答案是 42。", reasoningBlock("用户需要计算…"));
-```
+## 设计思路
 
-后续 token 计费也能区分 `reasoningTokens`（推理 token 通常计费规则不同）。
+**为什么消息要有类型？**
 
-### 3. 不可变历史 = 安全回滚
+没有类型的消息就是一段 JSON，你得自己猜里面是什么。有类型的消息一眼就知道"这是工具调用"还是"这是工具结果"。后续章节的校验、压缩、搜索都依赖这个分类。
 
-ch02 的 `Record[]` 任何人都能中间插一条消息，编译不报错。ch03 所有 Block 都是 `readonly`，只能通过 `transcript.append()` 追加。
+**为什么消息创建后不能改？**
 
-想回滚一行搞定：
-
-```typescript
-const snapshot = [...transcript.messages]; // 浅拷贝 = 深拷贝（block 不可变）
-// 跑了几轮模型跑偏了…
-transcript.messages = snapshot; // 回到之前
-```
-
-## 跟 ch02 比，代价是什么
-
-| 维度 | ch02 | ch03 |
-|---|---|---|
-| transcript | `Record[]`，无类型约束 | `Message[]`，编译期检查字段名 |
-| 错误处理 | 抛了就崩 | try/catch → isError 反馈给模型 |
-| 厂商适配 | transcript 格式与厂商绑定 | Block 语义 + adapter 映射 |
-| 推理模型 | 不支持 | ReasoningBlock 预留 |
-| system prompt | 不支持 | `Transcript.system` 字段 |
-| 写代码的直观性 | 手写对象字面量，很直接 | 要调 factory 方法，啰嗦一点 |
-
-**ch02 上手更快，但 ch03 的抽象层在接真实 LLM 时成本会收回来。**
-
-## 仍然缺的（后续章节的事）
-
-- 工具注册中心（现在还是 `Record<string, ToolFunction>` 直接传）
-- 上下文窗口管理（transcript 无线增长）
-- token 计数/压缩（ProviderResponse 已有字段但没人消费）
-- 真实 LLM provider（只有 MockProvider）
-
-## 一句话
-
-> **ch03 把 transcript 从无类型对象升级为语义化的 Block 体系，让错误能传递、推理模型有位置、厂商适配可插拔，代价是多写几行 factory 调用。**
+不可变性是工程里一个很有用的习惯。它强迫你在创建消息时就把内容搞对，而不是"先创建，后面再修"。bug 更容易在源头被发现。
