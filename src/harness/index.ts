@@ -29,6 +29,12 @@
  * 第 11 章新增导出：
  *   - fileViewportTool — Viewport 文件读取（ACI 原则）
  *   - editLinesTool — 行范围编辑（ACI 原则）
+ *
+ * 第 12 章新增导出：
+ *   - ToolCatalog — 动态工具选择器
+ *   - queryFromTranscript — 从对话历史提取检索 query
+ *   - createDiscoveryEntry — discovery 工具工厂
+ *   - CatalogEntry — 目录条目类型
  */
 
 export const VERSION = "0.1.0";
@@ -53,6 +59,8 @@ export { DocumentIndex } from "./retrieval/index.js";
 export type { Chunk, SearchHit } from "./retrieval/index.js";
 export { RetrievalInterface } from "./tools/retrieval.js";
 export { fileViewportTool, editLinesTool } from "./tools/files.js";
+export { ToolCatalog, queryFromTranscript, createDiscoveryEntry } from "./tools/selector.js";
+export type { CatalogEntry } from "./tools/selector.js";
 
 export { ProviderResponse, ToolCallRef, accumulate } from "./providers/base.js";
 export type { Provider } from "./providers/base.js";
