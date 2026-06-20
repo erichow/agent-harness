@@ -5,159 +5,63 @@
 
 ---
 
-> **一句话：构建 ContextAccountant，按组件追踪 token 用量——system / tools / history / retrieved / headroom——为第 8-11 章的压缩、scratchpad、检索决策提供数据基础。**
+## 为什么需要这个
+
+Agent 每轮对话都会带上历史记录——用户说过什么、模型回答过什么、工具返回过什么。这些东西都存在一个叫"上下文窗口"的地方。
+
+大多数人第一次接触上下文窗口时会有三个直觉，**全是错的**：
+
+**直觉 1：窗口大小是固定的**
+现实：模型性能在远没填满窗口之前就开始下降。200K 的窗口，可能到 100K 就开始遗忘前面说了什么。
+
+**直觉 2：消耗是线性的**
+现实：工具返回的结果、搜索到的文档、历史上的对话——它们占窗口的方式完全不同。一个返回 50000 token JSON 的工具调用，比十轮普通对话占的地方还多。
+
+**直觉 3：满了能看出来**
+现实：模型不会说"我窗口满了"。它会静默地忘记窗口中间的内容，开始编造事实来填补空白。你看到的是一个自信的错误答案，而不是"我不知道"。
 
 ---
 
-## 解决了什么
+## 怎么解决的
 
-ch06 的 4 道闸门让 registry 安全了。但 **第 2 章那张 5-break 表还有最后一个没关**——Break 5：*一个返回 200KB JSON 的工具，第 4 个回合还是会毒死 loop。*
+### 先搞清楚每一类内容占了多少
 
-上下文窗口是 agent 工程里被误解最严重的资源。三个直觉都是错的：
+把窗口里的内容分成 5 类，分别统计：
 
-| 直觉 | 现实 |
-|------|------|
-| 大小固定 | 模型性能在远未撞顶之前就开始连续下降 |
-| 消耗线性 | tool 结果、检索文档、过往回合的 token/价值比完全不同 |
-| 满了显而易见 | 模型会静默失败——迷失在中间、编造事实 |
+| 类别 | 是什么 | 特点 |
+|------|--------|------|
+| **system** | 系统提示词（你是谁、怎么用工具） | 整个 session 不变，通常很小 |
+| **tools** | 工具的声明（名字、参数、描述） | 注册了就一直在，100-5000 token |
+| **history** | 对话历史（你说过的话、模型回答、工具结果） | 不断增长——这是窗口膨胀的主要来源 |
+| **retrieved** | 临时拉进来的文档、搜索结果 | 按需加入，用完可丢 |
+| **headroom** | 预留给模型写回答的空间 | 必须留，不然模型写到一半没地方了 |
 
-三项关键研究：
+### 用红黄绿三色判断状态
 
-- **Chroma 2025 · Context Rot** — 18 个 SOTA 模型上，即便输入只是窗口的 10%，性能也连续下降
-- **Liu 2023 · Lost in the Middle** — 检索准确率是 U 形曲线：中间的内容明显被忽视
-- **Hsieh 2024 · RULER** — 每个模型的有效长度都比标称短 4-8×
+| 状态 | 使用率 | 含义 |
+|------|--------|------|
+| 🟢 绿色 | ≤ 60% | 安全，继续干活 |
+| 🟡 黄色 | 60-80% | 注意了，该考虑压缩了 |
+| 🔴 红色 | > 80% | 立即压缩！内容已经在腐烂 |
 
----
+### 每回合看一眼
 
-## 新增了什么
+在每次调用模型之前，系统会自动做一次快照，看看当前窗口的使用情况。如果是红色就触发压缩（下一章），同时把快照发给界面显示。
 
-### 7.1 — ContextBudget
-
-```typescript
-export class ContextBudget {
-  constructor(
-    readonly windowSize: number = 200_000,
-    readonly headroom: number = 4096,
-    readonly yellowThreshold: number = 0.60,
-    readonly redThreshold: number = 0.80,
-  ) {}
-
-  get usable(): number {
-    return this.windowSize - this.headroom;
-  }
-}
-```
-
-阈值经验法则：
-
-| 状态 | 区间 | 行动 |
-|------|------|------|
-| 🟢 green | ≤ 60% | 无须动作 |
-| 🟡 yellow | 60–80% | 考虑压缩 |
-| 🔴 red | > 80% | 立即压缩 |
-
-### 7.2 — ContextSnapshot
-
-某一时刻的上下文快照，按 5 类组件拆分：
-
-- **system** — 系统提示词（整 session 稳定）
-- **tools** — tool schemas（由 provider 渲染到 prompt）
-- **history** — 对话历史（user / assistant / tool 结果）
-- **retrieved** — 为当前 turn 检索的外部内容（第 10 章用）
-- **headroom** — 预留给模型响应的空间
-
-### 7.3 — ContextAccountant
-
-```typescript
-export class ContextAccountant {
-  readonly budget: ContextBudget;
-
-  snapshot(
-    transcript: Transcript,
-    toolSchemas?: Record<string, unknown>[],
-    retrieved?: string[],
-  ): ContextSnapshot { /* ... */ }
-}
-```
-
-**纯测量，不改任何数据。** 只回答一个问题：*"给你这份 transcript 和这些工具，我在花你 usable 窗口的多少，按组件怎么拆分？"*
-
-Token 估算方法：`charCount / 4`（对英文约 4 字符/token，中文算 2 字符/token）。不需要额外依赖，偏差在预算决策中可接受。Provider 返回的 `input_tokens` 用于事后对账。
-
-### 7.4 — Loop 集成
-
-arun() 新增两个参数：
-
-```typescript
-export async function arun(
-  // ... 原有参数 ...
-  onSnapshot?: (snapshot: ContextSnapshot) => void,
-  accountant?: ContextAccountant,
-): Promise<string>
-```
-
-每 turn 前执行：
-
-```typescript
-const snapshot = ctxAccountant.snapshot(transcript, registry.getSchemas());
-if (onSnapshot) onSnapshot(snapshot);
-if (snapshot.state === "red") {
-  // 第 8 章：compactor 塞在这里。目前仅观察。
-}
-```
-
-`onSnapshot` 每回合触发一次——CLI/TUI 可用于显示实时上下文用量；生产 harness 喂给可观测性 pipeline。
+这样你就**能实时看到**上下文窗口是怎么涨的——而不是等模型开始胡说八道了才意识到出了问题。
 
 ---
 
-## 架构变化
+## 设计思路
 
-```
-agent.ts (arun)
-  │
-  ├─ 每 turn 前: accountant.snapshot()
-  │     ├─ onSnapshot(snapshot) → UI / OTel
-  │     └─ state === "red" → 第 8 章 compactor
-  │
-  └─ 原有逻辑: oneTurn() → dispatch → next turn
-                    │
-         context/accountant.ts
-           ├─ ContextBudget (window_size, headroom, thresholds)
-           ├─ ContextSnapshot (totals, utilization, state)
-           └─ ContextAccountant (snapshot, _countText, _countBlocks)
-```
+**为什么要分 5 类？**
 
-## 测试覆盖
+因为不同类别的"压缩价值"不同。system 提示压缩了就全崩了；history 里旧的工具结果是最适合压缩的。不分类就没办法做聪明的压缩决策。
 
-```
-ch07_accountant.test.ts — 18 tests
-├─ ContextBudget (4)
-│  ├─ defaults
-│  ├─ usable = windowSize - headroom
-│  ├─ custom thresholds
-│  └─ zero usable (defensive)
-├─ ContextSnapshot (5)
-│  ├─ totalUsed excludes headroom
-│  ├─ utilization
-│  ├─ green / yellow / red state
-│  └─ defensive zero
-├─ ContextAccountant: text counting (2)
-│  ├─ empty = 0
-│  └─ longer = more
-├─ ContextAccountant: message counting (2)
-│  ├─ counts history messages
-│  └─ counts tool_call + tool_result blocks
-├─ ContextAccountant: snapshot (2)
-│  ├─ 5 components
-│  └─ snapshot changes as transcript grows
-└─ agent integration (3)
-   ├─ onSnapshot fires each turn
-   ├─ multi-turn fires each iteration
-   └─ custom accountant forwarded
-```
+**为什么不用 provider 返回的精确数值？**
 
----
+模型厂商会在每次响应里告诉你"这次用了多少 token"。但那是事后诸葛亮——你都调用完了才知道窗口要满了。我们需要的是**事前**估算，在调用模型之前就知道"这一轮大概率要超"。
 
-## 一句话
+**现在是纯观察，不做任何修改。**
 
-> ch07 把上下文窗口从"看不见的黑箱"变成"可测量的预算"——Accountant 只测量不修改，`onSnapshot` 给 UI 和可观测性消费，red state 的钩子留给第 8 章。**填窗口的不是用户，是工具输出。**
+这一章的记账员只负责看和报——它不改对话、不删内容、不调模型。"发现问题"和"解决问题"分开，这一章只做前者，下一章做后者。

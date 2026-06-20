@@ -5,138 +5,59 @@
 
 ---
 
-> **一句话：两层压缩——先 mask 旧 tool_result（可逆·精确·免费），不够再 summarize 前缀（有损·贵·必要时才上）——把 transcript 缩小，又不伤工具调用记录。**
+## 为什么需要这个
+
+上一章我们能看到上下文窗口的使用情况了——红色表示窗口快满了。但看到问题不等于解决问题。这一章就是在看到红色时，自动把窗口内容压缩，腾出空间。
+
+但压缩有个根本矛盾：**有些内容可以丢，有些绝对不能丢。**
 
 ---
 
-## 解决了什么
+## 怎么解决的
 
-ch07 的 accountant 能看见上下文窗口进入 red 状态，但 red 分支只有一个 `pass`——**transcript 持续增长直到 provider 拒收**。
+两级压缩：先试便宜的，不够再用贵的。
 
-Compaction 是本书第一个正确答案不明显、设计空间真正有争议的子系统。生产系统各有各的解法：
+### 第一级：遮蔽（免费、可逆）
 
-| 系统 | 做法 |
-|------|------|
-| Claude Code | 用更便宜的模型总结旧回合 |
-| OpenAI Agents SDK | 留给开发者去做 |
-| LangGraph | 图模型里没有原生压缩 |
-| AutoGen GroupChat | O(n×m) 随 agent×turn 增长 |
+工具调用返回的内容是窗口膨胀的最大元凶——一次 `read_file` 可能返回 5000 token。但旧的工具结果是**最容易压缩**的部分：它们已经用过了，模型不太需要回头看。
+
+做法很简单：把旧工具结果的详细内容替换成一行占位符：
+
+```
+之前："{"users":[{"name":"张三","age":28,"email":"... 5000 个字符 ..."}]}"
+之后："[tool_result elided; call_id=c-3; original_tokens~=1250]"
+```
+
+占位符保留了调用 ID 和原始大小——如果 agent 真的需要再看，可以重新调工具获取。所以这是**可逆的**。
+
+**幂等设计：** 如果压缩了一次还不够，运行第二次压缩，已经遮蔽过的不会再次处理。
+
+### 第二级：总结（有损、需要调模型）
+
+如果遮蔽完了还是红色，说明窗口里剩下的内容也需要压缩。这时候需要**用模型来总结旧对话**：
+
+- 跳过用户的第一条消息（那是最初目标，最重要）
+- 把旧回合渲染成文本，让一个模型读一遍
+- 产出一段摘要替换掉那些旧回合
+
+这是**不可逆的**——细节丢了就丢了。所以只有在遮蔽不够时才用。
 
 ---
 
-## 新增了什么
+## 设计思路
 
-### 8.1 — Masking（遮蔽）
+**为什么先遮蔽再总结？**
 
-把旧的 `ToolResult.content` 替换成占位符，保留 `call_id` 和原始 token 数。
+遮蔽是字符串操作，免费、可逆，而且大多数情况下就够用了。只有遮蔽之后还红色才需要用模型做总结——那是一次付费的 LLM 调用，且不可逆。**先拉便宜的杠杆，不够再拉贵的。**
 
-```
-原始: "大型 JSON 输出（5000 tokens）"
-遮蔽: "[tool_result elided; call_id=c-3; original_tokens~=1250]"
-```
+**哪些内容绝对不能丢？**
 
-三个设计细节：
+工具调用的**记录**——"哪个工具被调过、调了几次"这件事。如果 agent 第 4 轮发了邮件，压缩后它不能忘记"邮件已经发过了"，否则第 20 轮它会再发一次。所以压缩策略是：遮蔽工具结果的内容，但保留工具调用的痕迹。
 
-- **幂等** — 已 mask 的 content（以 `[tool_result elided` 开头）不再处理，因为压缩可能在一个 session 里跑多次
-- **返回释放数** — 调用方据此决定是否升级到 summarization
-- **重建 message** — 保持不可变纪律（ch03 的 frozen block 约定）
+**如果两级都拉了还是红色呢？**
 
-```typescript
-export function maskOlderResults(
-  transcript: Transcript,
-  keepRecent: number = 3,
-): number
-```
+日志里记一条警告，然后放弃。让下一轮在模型层失败——这恰恰是操作员需要看到的信息："你的窗口不够用，需要更大的模型或者更紧凑的工具设计。"问题可见比默默崩溃好。
 
-### 8.2 — Summarization（总结）
+**压缩后为什么要再发一次状态更新？**
 
-当 masking 单独不能把 transcript 压到 red 以下时，用 LLM 总结前缀。
-
-**关键设计：**
-
-- **跳过第 1 条 user message** — 用户的初始目标是 anchor，agent 最终要满足它，尽可能久保留原样
-- **Tool calls 显式渲染** — `[assistant→tool] calc({...})` 进了 summarizer 输入；prompt 要求逐行保留 tool call
-- **就地替换** — transcript 第 1 条保留，摘要成第 2 条，最近 turn 保留
-
-### 8.3 — Compactor（协调者）
-
-```typescript
-export class Compactor {
-  async compactIfNeeded(
-    transcript: Transcript,
-    toolSchemas: Record<string, unknown>[],
-  ): Promise<CompactionResult> {
-    // Step 1: mask older tool results
-    // Step 2: if still red → summarize prefix
-    // Step 3: if still red → log warning and give up
-  }
-}
-```
-
-**两根杠杆，按顺序拉：**
-
-```
-red → mask → 还红? → summarize → 还红? → log 警告并放弃
-           ↓              ↓               ↓
-          green         green         provider 层失败
-```
-
-### 8.4 — Loop 集成
-
-```typescript
-if (snapshot.state === "red") {
-  const result = await compactor.compactIfNeeded(transcript, schemas);
-  if (onCompaction) onCompaction(result);
-  // 再发一次 snapshot（效果帧）
-  if (onSnapshot) onSnapshot(accountant.snapshot(transcript, schemas));
-}
-```
-
-压缩后发第二次 `onSnapshot`——同一迭代内观察者能看到 before/after。
-
----
-
-## 架构变化
-
-```
-agent.ts (arun)
-  │
-  ├─ 每 turn: snapshot
-  │     └─ red → Compactor.compactIfNeeded()
-  │              ├─ maskOlderResults()        masking.ts
-  │              └─ summarizePrefix()         summarizer.ts
-  │
-  └─ 压缩后: 二次 snapshot（效果帧）
-                   │
-        context/
-          ├─ masking.ts     — maskOlderResults()
-          ├─ summarizer.ts  — summarizePrefix()
-          └─ compactor.ts   — Compactor + CompactionResult
-```
-
-## 测试覆盖
-
-```
-ch08_compactor.test.ts — 11 tests
-├─ maskOlderResults (5)
-│  ├─ count <= keepRecent → 无操作
-│  ├─ masks older, keeps recent
-│  ├─ 幂等
-│  ├─ 无 tool_result → 0
-│  └─ 保留 callId 和 isError
-├─ summarizePrefix (2)
-│  ├─ 消息不足 → null
-│  └─ 替换前缀为摘要消息
-├─ Compactor (2)
-│  ├─ green → 无操作
-│  └─ red → masking 生效
-└─ Agent 集成 (2)
-   ├─ red 触发 onCompaction
-   └─ 默认参数不破坏正常流程
-```
-
----
-
-## 一句话
-
-> ch08 的 Compactor 先尝试免费的 mask（可逆、精确），不够再调用 LLM summarize（有损、昂贵）。两根杠杆都拉了还红 → 日志警告并放弃——**让操作员能看到问题，比默默失败好**。
+压缩经常发生在倒数第二轮——压缩完，下一轮模型给出最终答案，会话结束。如果不重新发一次状态更新，界面上看到的最后一帧永远是红色，好像压缩没起作用一样。所以压缩完成后会立刻再发一次快照，显示"压完之后现在是黄色了"。
