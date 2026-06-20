@@ -21,6 +21,10 @@
  *
  * 第 9 章新增导出：
  *   - Scratchpad — 持久化 KV 存储（外部状态）
+ *
+ * 第 10 章新增导出：
+ *   - DocumentIndex — BM25 文档索引
+ *   - RetrievalInterface — search_docs 检索工具
  */
 
 export const VERSION = "0.1.0";
@@ -40,6 +44,10 @@ export { ToolRegistry, jsonQueryDefinition, jsonQueryHandler } from "./tools/reg
 export type { ToolDefinition, ToolHandler } from "./tools/registry.js";
 export { ValidationError } from "./tools/validation.js";
 export { Scratchpad } from "./tools/scratchpad.js";
+
+export { DocumentIndex } from "./retrieval/index.js";
+export type { Chunk, SearchHit } from "./retrieval/index.js";
+export { RetrievalInterface } from "./tools/retrieval.js";
 
 export { ProviderResponse, ToolCallRef, accumulate } from "./providers/base.js";
 export type { Provider } from "./providers/base.js";
