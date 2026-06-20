@@ -25,6 +25,10 @@
  * 第 10 章新增导出：
  *   - DocumentIndex — BM25 文档索引
  *   - RetrievalInterface — search_docs 检索工具
+ *
+ * 第 11 章新增导出：
+ *   - fileViewportTool — Viewport 文件读取（ACI 原则）
+ *   - editLinesTool — 行范围编辑（ACI 原则）
  */
 
 export const VERSION = "0.1.0";
@@ -48,6 +52,7 @@ export { Scratchpad } from "./tools/scratchpad.js";
 export { DocumentIndex } from "./retrieval/index.js";
 export type { Chunk, SearchHit } from "./retrieval/index.js";
 export { RetrievalInterface } from "./tools/retrieval.js";
+export { fileViewportTool, editLinesTool } from "./tools/files.js";
 
 export { ProviderResponse, ToolCallRef, accumulate } from "./providers/base.js";
 export type { Provider } from "./providers/base.js";
