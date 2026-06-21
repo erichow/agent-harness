@@ -5,6 +5,58 @@
 
 ---
 
+## MCP 协议握手
+
+```mermaid
+sequenceDiagram
+    participant H as Harness (Client)
+    participant S as MCP Server (subprocess)
+    
+    H->>S: {"method":"initialize","params":{"protocolVersion":"2024-11-05"}}
+    S-->>H: {"result":{"protocolVersion":"2024-11-05","capabilities":{}}}
+    H->>S: {"method":"notifications/initialized"}
+    
+    Note over H,S: 握手完成
+    
+    H->>S: {"method":"tools/list"}
+    S-->>H: {"result":{"tools":[{name,description,inputSchema},...]}}
+    
+    Note over H,S: 工具发现完成
+    
+    H->>S: {"method":"tools/call","params":{"name":"echo","arguments":{"text":"hi"}}}
+    S-->>H: {"result":{"content":[{"type":"text","text":"hi"}]}}
+```
+
+## M×N vs M+N
+
+```mermaid
+flowchart TB
+    subgraph "❌ 没有 MCP: M × N"
+        Cursor[Cursor] -->|bespoke| GH[GitHub]
+        Claude[Claude Code] -->|bespoke| GH
+        Harness[你的 Agent] -->|bespoke| GH
+        Cursor -->|bespoke| Slack[Slack]
+        Claude -->|bespoke| Slack
+        Harness -->|bespoke| Slack
+        Cursor -->|bespoke| PG[Postgres]
+        Claude -->|bespoke| PG
+        Harness -->|bespoke| PG
+    end
+
+    subgraph "✅ 有 MCP: M + N"
+        C2[Cursor] -->|MCP| MCP_Hub[MCP Protocol]
+        C3[Claude Code] -->|MCP| MCP_Hub
+        H2[你的 Agent] -->|MCP| MCP_Hub
+        MCP_Hub -->|MCP| GH2[GitHub]
+        MCP_Hub -->|MCP| Slack2[Slack]
+        MCP_Hub -->|MCP| PG2[Postgres]
+    end
+
+    style Cursor fill:#FFB6B6
+    style C2 fill:#90EE90
+    style MCP_Hub fill:#90EE90
+```
+
 ## 为什么需要这个
 
 前情：harness 能通过动态加载跨过工具悬崖。但所有工具仍然是**我们自己写的**。本章接入*外部*工具服务器。

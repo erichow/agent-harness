@@ -5,6 +5,41 @@
 
 ---
 
+## 工具注册与执行流程
+
+```mermaid
+flowchart TB
+    subgraph "注册时"
+        Reg["registry.register()"]
+        Def["ToolDefinition<br/>name + description + inputSchema"]
+        Handler["ToolHandler<br/>(args) => string"]
+        Reg --> Def
+        Reg --> Handler
+        Def --> Store["存入 definitions Map"]
+        Handler --> Store2["存入 handlers Map"]
+    end
+
+    subgraph "执行时"
+        Call["模型发起工具调用<br/>tool_call(name, args)"]
+        Check["1. name 存在?"]
+        Execute["2. handler(args)"]
+        Result["返回 ToolResultBlock"]
+        
+        Call --> Check
+        Check -->|存在| Execute
+        Check -->|不存在| Unknown["返回 unknown tool 错误"]
+        Execute --> Result
+    end
+
+    Store -.-> Check
+    Store2 -.-> Execute
+
+    style Reg fill:#90EE90
+    style Call fill:#ADD8E6
+    style Result fill:#90EE90
+    style Unknown fill:#FFB6B6
+```
+
 ## 为什么需要这个
 
 前几章里，工具的定义和工具的执行是分开管理的：

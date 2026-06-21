@@ -5,6 +5,35 @@
 
 ---
 
+## 检索流程
+
+```mermaid
+flowchart TB
+    subgraph "索引构建"
+        Doc["文档目录"] --> Chunk["按 ~500 tokens 切分<br/>50 token overlap"]
+        Chunk --> Tokenize["分词 → BM25 索引"]
+    end
+
+    subgraph "搜索执行"
+        Query["Agent 发起 search_docs(query, k)"] --> Search["BM25.search()"]
+        Search --> Score["BM25 Okapi 打分<br/>k1=1.5, b=0.75"]
+        Score --> Filter["过滤 score ≤ 0 的结果"]
+        Filter --> Format["格式化输出<br/>doc_id#chunk_id score=<br/>+ token 成本估算"]
+    end
+
+    subgraph "Edge Placement"
+        Result["ToolResult 回到 transcript"] --> Position{"下一回合"}
+        Position -->|Agent 引用进自己话| End["窗口末端 ✅<br/>注意力最高"]
+        Position -->|不引用| Middle["窗口中间 ❌<br/>Lost-in-the-Middle"]
+    end
+
+    Tokenize -.-> Search
+    Format --> Result
+
+    style End fill:#90EE90
+    style Middle fill:#FFB6B6
+```
+
 ## 为什么需要这个
 
 前情：scratchpad 给了 agent 它**自己产出**的内容的 durable state。它没覆盖的是 *agent 要读但不是它写的*：探索中的代码库、文档、一份比窗口本身还大的知识库。

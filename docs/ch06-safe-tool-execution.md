@@ -5,6 +5,50 @@
 
 ---
 
+## 四道闸门
+
+```mermaid
+flowchart TB
+    Call["模型发起工具调用"] --> Gate1
+    
+    subgraph Gate1["闸门 1: 工具存在?"]
+        direction LR
+        G1_Check{name 在 registry 里?}
+        G1_Check -->|否| G1_Suggest["返回: unknown tool<br/>Did you mean 'calc'?"]
+    end
+    
+    Gate1 -->|存在| Gate2
+    
+    subgraph Gate2["闸门 2: 参数校验?"]
+        direction LR
+        G2_Check{args ⊃ schema?}
+        G2_Check -->|否| G2_Errors["返回: 结构化校验错误<br/>一次性列出所有问题"]
+    end
+    
+    Gate2 -->|通过| Gate3
+    
+    subgraph Gate3["闸门 3: 循环检测?"]
+        direction LR
+        G3_Check{"连续3次<br/>完全相同?"}
+        G3_Check -->|是| G3_Loop["返回: 检测到循环<br/>换策略或返回当前答案"]
+    end
+    
+    Gate3 -->|否| Gate4
+    
+    subgraph Gate4["闸门 4: 执行"]
+        direction LR
+        G4_Try["try: handler(args)"]
+        G4_Try -->|成功| G4_OK["返回 ToolResultBlock"]
+        G4_Try -->|异常| G4_Error["catch: 返回结构化错误"]
+    end
+
+    style G1_Suggest fill:#FFB6B6
+    style G2_Errors fill:#FFB6B6
+    style G3_Loop fill:#FFE4B5
+    style G4_OK fill:#90EE90
+    style G4_Error fill:#FFB6B6
+```
+
 ## 为什么需要这个
 
 agent 通过工具跟世界交互——读文件、执行命令、查数据库。但如果工具调用出了问题，后果比"模型回答错误"严重得多。

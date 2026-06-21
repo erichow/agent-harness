@@ -5,6 +5,37 @@
 
 ---
 
+## Sub-agent 架构
+
+```mermaid
+flowchart TB
+    subgraph "父 Agent (协调者)"
+        Parent["独立 Transcript<br/>高层决策"]
+        ParentTool["read_file_viewport<br/>edit_lines<br/>run_sub_agent"]
+    end
+
+    subgraph "Sub-agent A: 搜索文档"
+        SA["独立 Transcript<br/>专注于搜索"]
+        SATool["search_docs<br/>scratchpad_write"]
+        SA --> SATool
+    end
+
+    subgraph "Sub-agent B: 分析代码"
+        SB["独立 Transcript<br/>专注于分析"]
+        SBTool["read_file_viewport<br/>bash"]
+        SB --> SBTool
+    end
+
+    Parent -->|"委托: 搜索 retry 实现"| SA
+    Parent -->|"委托: 分析 bug 模式"| SB
+    SA -->|"返回摘要"| Parent
+    SB -->|"返回发现"| Parent
+
+    style Parent fill:#ADD8E6
+    style SA fill:#90EE90
+    style SB fill:#90EE90
+```
+
 ## 为什么需要这个
 
 前情：到第 14 章为止，harness 一直是一个单一的 agent 循环——一个 provider、一个 transcript、一个工具集。但在真实场景里，一个 agent 自己做所有事是不够的：

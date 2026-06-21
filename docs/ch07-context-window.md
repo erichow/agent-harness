@@ -5,6 +5,27 @@
 
 ---
 
+## 上下文状态机
+
+```mermaid
+flowchart LR
+    subgraph "每回合检查"
+        S[ContextAccountant<br/>snapshot()] --> Check{预算使用率}
+        Check -->|"≤ 70%"| Green[🟢 Green<br/>正常继续]
+        Check -->|"70-90%"| Yellow[🟡 Yellow<br/>发出警告]
+        Check -->|"> 90%"| Red[🔴 Red<br/>触发压缩]
+    end
+
+    Green --> Next[进入下一回合]
+    Yellow --> Next
+    
+    Red --> Compact[Compactor.compact()]
+    Compact --> Mask["1. maskOlderResults<br/>隐藏旧工具结果"]
+    Mask --> Summarize["2. summarizePrefix<br/>总结旧轮次"]
+    Summarize --> Snapshot2["再次 snapshot<br/>验证已退出 red"]
+    Snapshot2 --> Next
+```
+
 ## 为什么需要这个
 
 Agent 每轮对话都会带上历史记录——用户说过什么、模型回答过什么、工具返回过什么。这些东西都存在一个叫"上下文窗口"的地方。

@@ -5,6 +5,62 @@
 
 ---
 
+## 权限决策流程
+
+```mermaid
+flowchart TB
+    Call[工具调用到达 executeAsync] --> Gate1
+    
+    subgraph "5 道闸门"
+        Gate1["闸门 1: 工具存在?"] -->|存在| Gate2
+        Gate2["闸门 2: Schema 校验?"] -->|通过| Gate25
+        
+        subgraph "闸门 2.5: 权限检查"
+            PM[PermissionManager.check()]
+            Cache{"session 缓存命中?"}
+            Policy{"策略决策"}
+            Human{"ask → 人 in loop"}
+            
+            PM --> Cache
+            Cache -->|是| Allow[allow ✅]
+            Cache -->|否| Policy
+            Policy -->|allow| Allow
+            Policy -->|deny| Deny[deny ❌]
+            Policy -->|ask| Human
+            Human -->|allow| Allow
+            Human -->|deny| Deny
+        end
+        
+        Gate25 -->|allow| Gate3["闸门 3: 循环检测?"]
+        Gate25 -->|deny| Reject[返回 permission denied]
+        Gate3 -->|否| Gate4["闸门 4: 执行"]
+    end
+
+    Gate4 --> Trust["trust label 包装<br/>network 工具 → <untrusted_content>"]
+    Trust --> Result[返回 ToolResultBlock]
+
+    style Allow fill:#90EE90
+    style Deny fill:#FFB6B6
+    style Reject fill:#FFB6B6
+    style Human fill:#FFE4B5
+    style Trust fill:#ADD8E6
+```
+
+```mermaid
+flowchart LR
+    subgraph "策略组合 (compose)"
+        PA["pathAllowlist<br/>[/workspace, /tmp]"] --> SE["bySideEffect<br/>read=allow<br/>write=ask<br/>network=ask<br/>mutate=deny"]
+        SE --> Result2{决策}
+        Result2 -->|allow| Allow2["✅ 放行"]
+        Result2 -->|deny| Deny2["❌ 拒绝"]
+        Result2 -->|ask| Ask["👤 问人"]
+    end
+
+    style Allow2 fill:#90EE90
+    style Deny2 fill:#FFB6B6
+    style Ask fill:#FFE4B5
+```
+
 ## 为什么需要这个
 
 前情：MCP 让任何外部工具 server 都能接进 harness。Harness 这一路一直没有权限控制——**两件事都到了不能继续的地步**。

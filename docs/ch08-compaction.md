@@ -5,6 +5,42 @@
 
 ---
 
+## 压缩流程
+
+```mermaid
+flowchart TB
+    Start[🟡 上下文接近上限] --> Check{state === red?}
+    Check -->|否| Continue[继续正常循环]
+    Check -->|是| Compact[开始压缩]
+    
+    subgraph Compact["Compactor.compact()"]
+        Step1["1. maskOlderResults()<br/>隐藏旧 tool_result blocks<br/>→ 保留最近的 N 个"]
+        Step2["2. summarizePrefix()<br/>总结旧的对话轮次<br/>→ 压缩为简短摘要"]
+        Step3["3. 重新计算 budget"]
+        
+        Step1 --> Step2 --> Step3
+    end
+    
+    Compact --> Result{压缩后回到 green?}
+    Result -->|是| Continue
+    Result -->|否| Warn[⚠ 已尽力压缩<br/>但仍超限，预算调高?]
+    
+    subgraph 效果
+        Before["压缩前: 25K tokens<br/>🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡"]
+        After["压缩后: 12K tokens<br/>🟢🟢🟢🟢🟢"]
+    end
+
+    Continue --> Before
+    Before --> After
+
+    style Compact fill:#FFE4B5
+    style Mask fill:#ADD8E6
+    style Summarize fill:#ADD8E6
+    style Warn fill:#FFB6B6
+    style Before fill:#FFE4B5
+    style After fill:#90EE90
+```
+
 ## 为什么需要这个
 
 上一章我们能看到上下文窗口的使用情况了——红色表示窗口快满了。但看到问题不等于解决问题。这一章就是在看到红色时，自动把窗口内容压缩，腾出空间。

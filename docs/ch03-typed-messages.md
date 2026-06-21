@@ -5,6 +5,55 @@
 
 ---
 
+## 消息类型结构
+
+```mermaid
+classDiagram
+    class Block {
+        <<union>>
+        kind: string
+    }
+    class TextBlock {
+        kind: "text"
+        text: string
+    }
+    class ToolCallBlock {
+        kind: "tool_call"
+        id: string
+        name: string
+        args: object
+    }
+    class ToolResultBlock {
+        kind: "tool_result"
+        callId: string
+        content: string
+        isError: boolean
+    }
+    class ReasoningBlock {
+        kind: "reasoning"
+        text: string
+        metadata: object
+    }
+    class Message {
+        role: "user" | "assistant"
+        blocks: Block[]
+        createdAt: Date
+        id: string
+    }
+    class Transcript {
+        messages: Message[]
+        system?: string
+        append(msg): void
+    }
+
+    Block <|-- TextBlock
+    Block <|-- ToolCallBlock
+    Block <|-- ToolResultBlock
+    Block <|-- ReasoningBlock
+    Message "1" --> "*" Block
+    Transcript "1" --> "*" Message
+```
+
 ## 为什么需要这个
 
 上一章的 agent 循环能跑了，但有个基础问题没解决：**对话历史里存的消息长什么样，没有统一标准。**

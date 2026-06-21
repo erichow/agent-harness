@@ -5,6 +5,37 @@
 
 ---
 
+## 工具选择流程
+
+```mermaid
+flowchart TB
+    subgraph "完整 Catalog (30 工具)"
+        All["read_file_viewport<br/>edit_lines<br/>bash<br/>calc<br/>search_docs<br/>... ×30"]
+    end
+
+    subgraph "每回合选择"
+        Query["queryFromTranscript()<br/>首条消息 + 最近助理回复"] --> BM25["BM25.select(query, k=7)"]
+        BM25 --> Pinned["+ pinned tools<br/>list_available_tools 📌<br/>scratchpad_list 📌"]
+    end
+
+    subgraph "模型看到的 (7 工具)"
+        Selected["read_file_viewport<br/>edit_lines<br/>bash<br/>list_available_tools 📌<br/>... ×7"]
+    end
+
+    subgraph "被过滤的 (23 工具)"
+        Filtered["github_search<br/>npm_info<br/>slack_post<br/>... ×23"]
+    end
+
+    All --> BM25
+    Pinned --> Selected
+    BM25 --> Selected
+    All -.->|"不进入 context"| Filtered
+
+    style Selected fill:#90EE90
+    style Filtered fill:#E0E0E0
+    style Pinned fill:#FFE4B5
+```
+
 ## 为什么需要这个
 
 前情：第 11 章把工具设计成模型用得动的样子。Harness 现在有**一小撮设计良好的工具**。如果你需要 30 个会发生什么？

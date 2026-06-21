@@ -5,6 +5,38 @@
 
 ---
 
+## Scratchpad 架构
+
+```mermaid
+flowchart TB
+    subgraph "Agent 视角"
+        Write["scratchpad_write(key, content)<br/>→ 存入磁盘"]
+        Read["scratchpad_read(key)<br/>→ 从磁盘读取"]
+        List["scratchpad_list()<br/>→ 列出所有 key"]
+    end
+
+    subgraph "Scratchpad 内部"
+        Sanitize["key 消毒<br/>拒绝 / 和 .<br/>防止路径遍历"]
+        Store["磁盘文件<br/>.scratchpad/<key>.txt"]
+    end
+
+    subgraph "对比: Context 中的内容"
+        InContext["Transcript 中的内容<br/>会被 compactor 压缩"]
+        Compactor["Compactor<br/>mask / summarize"]
+        InContext -->|压缩| Compactor
+    end
+
+    Write --> Sanitize --> Store
+    Read --> Sanitize --> Store
+    List --> Store
+
+    Store -.->|压缩动不了它| Survive[跨 session 存活 ✅]
+
+    style Store fill:#90EE90
+    style Compactor fill:#FFB6B6
+    style Survive fill:#90EE90
+```
+
 ## 为什么需要这个
 
 前几章我们解决了窗口撑爆的问题——compactor 会自动压缩旧内容。但有个矛盾：

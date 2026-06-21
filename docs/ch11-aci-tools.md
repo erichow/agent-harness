@@ -5,6 +5,40 @@
 
 ---
 
+## Viewport vs Dump
+
+```mermaid
+flowchart LR
+    subgraph "❌ 旧方式: read_file 整文件 dump"
+        Old["一整文件 2000 行<br/>一次性返回<br/>无导航, 无 scroll<br/>吃掉大半个窗口"]
+    end
+
+    subgraph "✅ ACI 方式: read_file_viewport"
+        New["100 行窗口 + 行号<br/>offset 参数可 scroll<br/>envelope footer 指引<br/>'call with offset=100 for more'"]
+    end
+
+    Old -->|模型能力有限| Problem["对 2000 行无结构性能力<br/>不能 scroll, 不能找"]
+    New -->|模型可以 scroll| Solution["Agent 自己决定看哪段<br/>预算可控, 意图可审计"]
+
+    style Problem fill:#FFB6B6
+    style Solution fill:#90EE90
+```
+
+```mermaid
+flowchart TB
+    subgraph "edit_lines 4种操作"
+        Replace["替换: start=5, end=10<br/>replacement='new'"] --> R["5-10 行被替换"]
+        Delete["删除: start=5, end=10<br/>replacement=''"] --> D["5-10 行消失"]
+        Insert["插入: start=5, end=4<br/>replacement='new'"] --> I["新内容插在第 5 行前"]
+        Append["追加: start=last+1, end=last<br/>replacement='new'"] --> A["添加到文件末尾"]
+    end
+
+    style Replace fill:#ADD8E6
+    style Delete fill:#FFB6B6
+    style Insert fill:#90EE90
+    style Append fill:#90EE90
+```
+
 ## 为什么需要这个
 
 前情：上下文工程的支柱都齐了——记账、压缩、scratchpad、检索。还剩的是**我们一直在管理的上下文压力源头**：为人类设计、不是为模型设计的工具，所以返回得太多。

@@ -11,6 +11,23 @@
 
 ---
 
+## Agent 循环流程图
+
+```mermaid
+flowchart TB
+    Input[用户输入] --> Build["1. 拼接 prompt<br/>transcript + tool schemas"]
+    Build --> Complete["2. provider.complete()<br/>模型回答"]
+    Complete --> CheckFinal{"3. isFinal?"}
+    CheckFinal -->|是| Output[返回最终文本 ✅]
+    CheckFinal -->|否| CheckTool{"4. isToolCall?"}
+    CheckTool -->|是| Execute["5. 执行工具<br/>registry.execute()"]
+    CheckTool -->|否| Error[抛异常 ❌]
+    Execute --> Build
+    
+    style Output fill:#90EE90
+    style Error fill:#FFB6B6
+```
+
 ## 核心概念
 
 ### 什么是 Agent 循环

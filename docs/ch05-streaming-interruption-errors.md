@@ -5,6 +5,44 @@
 
 ---
 
+## 流式事件与重试流程
+
+```mermaid
+flowchart TB
+    subgraph "流式事件 (StreamEvent)"
+        Start["textDelta(text)<br/>逐字输出"] --> Reasoning["reasoningDelta(text)<br/>推理过程"]
+        Reasoning --> ToolStart["toolCallStart(id, name)<br/>准备调工具"]
+        ToolStart --> ToolDelta["toolCallDelta(id, partial)<br/>参数流式到达"]
+        ToolDelta --> Completed["completed(response)<br/>完整响应就绪"]
+    end
+
+    subgraph "中断处理"
+        Interrupt[Ctrl-C 中断] --> Save["保存已生成的 partial text"]
+        Save --> Mark["标记 [interrupted]"]
+        Mark --> Next["下一轮从断点继续"]
+    end
+
+    subgraph "重试 (withRetry)"
+        Call["Provider.astream()"] --> Fail{"503 / 超时?"}
+        Fail -->|否| OK[返回结果]
+        Fail -->|是| Wait["指数退避等待<br/>1s → 2s → 4s..."]
+        Wait --> Retry["重试"]
+        Retry --> Fail
+        Retry -->|超过次数| GiveUp[放弃并抛异常]
+    end
+
+    subgraph "降级 (FallbackProvider)"
+        Primary[主模型] --> Fail2{"失败?"}
+        Fail2 -->|是| Secondary[备用模型]
+        Fail2 -->|否| OK2[正常返回]
+    end
+
+    style Interrupt fill:#FFB6B6
+    style Save fill:#90EE90
+    style Wait fill:#FFE4B5
+    style Secondary fill:#ADD8E6
+```
+
 ## 解决了三个一定会碰到的问题
 
 前几章的 agent 能跑，但有三件事只要上了生产就一定会遇到：
