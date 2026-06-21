@@ -21,8 +21,8 @@ flowchart TB
 
     subgraph "执行时"
         Call["模型发起工具调用<br/>tool_call(name, args)"]
-        Check["1. name 存在?"]
-        Execute["2. handler(args)"]
+        Check["1.name 存在?"]
+        Execute["2.handler(args)"]
         Result["返回 ToolResultBlock"]
         
         Call --> Check
@@ -31,7 +31,7 @@ flowchart TB
         Execute --> Result
     end
 
-    Store -.-> Check
+    Store -..-> Check
     Store2 -.-> Execute
 
     style Reg fill:#90EE90

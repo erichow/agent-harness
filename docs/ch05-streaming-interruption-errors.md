@@ -10,6 +10,7 @@
 ```mermaid
 flowchart TB
     subgraph "流式事件 (StreamEvent)"
+    		direction TB
         Start["textDelta(text)<br/>逐字输出"] --> Reasoning["reasoningDelta(text)<br/>推理过程"]
         Reasoning --> ToolStart["toolCallStart(id, name)<br/>准备调工具"]
         ToolStart --> ToolDelta["toolCallDelta(id, partial)<br/>参数流式到达"]
@@ -17,12 +18,14 @@ flowchart TB
     end
 
     subgraph "中断处理"
+    		direction TB
         Interrupt[Ctrl-C 中断] --> Save["保存已生成的 partial text"]
         Save --> Mark["标记 [interrupted]"]
         Mark --> Next["下一轮从断点继续"]
     end
 
     subgraph "重试 (withRetry)"
+    		direction TB
         Call["Provider.astream()"] --> Fail{"503 / 超时?"}
         Fail -->|否| OK[返回结果]
         Fail -->|是| Wait["指数退避等待<br/>1s → 2s → 4s..."]
@@ -32,6 +35,7 @@ flowchart TB
     end
 
     subgraph "降级 (FallbackProvider)"
+    		direction TB
         Primary[主模型] --> Fail2{"失败?"}
         Fail2 -->|是| Secondary[备用模型]
         Fail2 -->|否| OK2[正常返回]

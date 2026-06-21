@@ -14,9 +14,9 @@ flowchart TB
     Check -->|是| Compact[开始压缩]
     
     subgraph Compact["Compactor.compact()"]
-        Step1["1. maskOlderResults()<br/>隐藏旧 tool_result blocks<br/>→ 保留最近的 N 个"]
-        Step2["2. summarizePrefix()<br/>总结旧的对话轮次<br/>→ 压缩为简短摘要"]
-        Step3["3. 重新计算 budget"]
+        Step1["1.maskOlderResults()<br/>隐藏旧 tool_result blocks<br/>→ 保留最近的 N 个"]
+        Step2["2.summarizePrefix()<br/>总结旧的对话轮次<br/>→ 压缩为简短摘要"]
+        Step3["3.重新计算 budget"]
         
         Step1 --> Step2 --> Step3
     end

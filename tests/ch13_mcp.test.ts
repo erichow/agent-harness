@@ -289,7 +289,10 @@ describe("wrapMcpTools", () => {
     );
 
     expect(result.isError).toBe(false);
-    expect(result.content).toBe("async works");
+    // MCP 工具 output 被 trust label 包装
+    expect(result.content).toContain("async works");
+    expect(result.content).toContain("<untrusted_content");
+    expect(result.content).toContain("mcp__mock__echo");
   });
 });
 
