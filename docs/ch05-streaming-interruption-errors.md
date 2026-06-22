@@ -3,51 +3,7 @@
 **commit:** （下一个）
 **tag:** ch05-streaming-interruption-errors
 
----
-
-## 流式事件与重试流程
-
-```mermaid
-flowchart TB
-    subgraph "流式事件 (StreamEvent)"
-    		direction TB
-        Start["textDelta(text)<br/>逐字输出"] --> Reasoning["reasoningDelta(text)<br/>推理过程"]
-        Reasoning --> ToolStart["toolCallStart(id, name)<br/>准备调工具"]
-        ToolStart --> ToolDelta["toolCallDelta(id, partial)<br/>参数流式到达"]
-        ToolDelta --> Completed["completed(response)<br/>完整响应就绪"]
-    end
-
-    subgraph "中断处理"
-    		direction TB
-        Interrupt[Ctrl-C 中断] --> Save["保存已生成的 partial text"]
-        Save --> Mark["标记 [interrupted]"]
-        Mark --> Next["下一轮从断点继续"]
-    end
-
-    subgraph "重试 (withRetry)"
-    		direction TB
-        Call["Provider.astream()"] --> Fail{"503 / 超时?"}
-        Fail -->|否| OK[返回结果]
-        Fail -->|是| Wait["指数退避等待<br/>1s → 2s → 4s..."]
-        Wait --> Retry["重试"]
-        Retry --> Fail
-        Retry -->|超过次数| GiveUp[放弃并抛异常]
-    end
-
-    subgraph "降级 (FallbackProvider)"
-    		direction TB
-        Primary[主模型] --> Fail2{"失败?"}
-        Fail2 -->|是| Secondary[备用模型]
-        Fail2 -->|否| OK2[正常返回]
-    end
-
-    style Interrupt fill:#FFB6B6
-    style Save fill:#90EE90
-    style Wait fill:#FFE4B5
-    style Secondary fill:#ADD8E6
-```
-
-## 解决了三个一定会碰到的问题
+## 为什么需要这个
 
 前几章的 agent 能跑，但有三件事只要上了生产就一定会遇到：
 
@@ -91,18 +47,50 @@ flowchart TB
 
 如果主模型挂了，可以自动切换到备用模型。比如 Anthropic 连不上了就切到 OpenAI。agent 自己不知道切换了——它只看到"模型还在工作"。
 
----
+> **为什么要一起做？** 流式、优雅中断、自动重试有一个共同前提：**异步**。它们都需要系统能在等待的同时做别的事。这一章的本质是：把 agent 从"一条路走到黑"改成了"随时能响应"。
+>
+> **为什么中断后保存已生成的内容？** 不是技术决定，而是产品哲学：用户的时间不白花，已经花费的计算资源应该产生价值。
+>
+> **为什么重试要加随机偏移？** 防止雪崩——100 个用户同时碰到服务故障，同时等 1 秒同时重试，会把服务再次打垮。随机偏移让请求分散开，服务有机会喘口气。
 
-## 设计思路
+### 流程图
 
-**为什么这些功能要一起做？**
+```mermaid
+flowchart TB
+    subgraph "流式事件 (StreamEvent)"
+        direction TB
+        Start["textDelta(text)<br/>逐字输出"] --> Reasoning["reasoningDelta(text)<br/>推理过程"]
+        Reasoning --> ToolStart["toolCallStart(id, name)<br/>准备调工具"]
+        ToolStart --> ToolDelta["toolCallDelta(id, partial)<br/>参数流式到达"]
+        ToolDelta --> Completed["completed(response)<br/>完整响应就绪"]
+    end
 
-它们有一个共同的前提：**异步**。流式、优雅中断、自动重试都需要系统能在等待的同时做别的事。所以这一章的本质是：把 agent 从"一条路走到黑"改成了"随时能响应"。
+    subgraph "中断处理"
+        direction TB
+        Interrupt[Ctrl-C 中断] --> Save["保存已生成的 partial text"]
+        Save --> Mark["标记 [interrupted]"]
+        Mark --> Next["下一轮从断点继续"]
+    end
 
-**为什么中断后保存已生成的内容？**
+    subgraph "重试 (withRetry)"
+        direction TB
+        Call["Provider.astream()"] --> Fail{"503 / 超时?"}
+        Fail -->|否| OK[返回结果]
+        Fail -->|是| Wait["指数退避等待<br/>1s → 2s → 4s..."]
+        Wait --> Retry["重试"]
+        Retry --> Fail
+        Retry -->|超过次数| GiveUp[放弃并抛异常]
+    end
 
-不是技术决定，而是产品哲学：用户的时间不白花。已经花费的计算资源（token）应该产生价值。
+    subgraph "降级 (FallbackProvider)"
+        direction TB
+        Primary[主模型] --> Fail2{"失败?"}
+        Fail2 -->|是| Secondary[备用模型]
+        Fail2 -->|否| OK2[正常返回]
+    end
 
-**为什么重试要加随机偏移？**
-
-如果 100 个用户同时遇到模型服务故障，同时等 1 秒，同时重试——那 1 秒后模型服务会同时收到 100 个请求，再次被打垮。随机偏移让这 100 个请求分散到 1 秒的时间窗口里，服务有机会喘口气。
+    style Interrupt fill:#FFB6B6
+    style Save fill:#90EE90
+    style Wait fill:#FFE4B5
+    style Secondary fill:#ADD8E6
+```
