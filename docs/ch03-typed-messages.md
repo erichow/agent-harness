@@ -60,7 +60,7 @@ const history = [
 
 ```mermaid
 graph TD
-    A["用户说：'1+1 等于多少？'"] --> M1
+    A["用户说：<br/>'1+1 等于多少？'"] --> M1
     subgraph M1[Message #1]
         TB1[TextBlock]
     end
@@ -72,15 +72,16 @@ graph TD
         TCB[ToolCallBlock]
     end
 
-    F["工具返回结果：'2'"] --> M3
+    F["工具回应：<br/>'2'"] --> M3
     subgraph M3[Message #3]
         TRB[ToolResultBlock]
+    end
+    G["模型回应：<br/>'结果是 2'"] --> M4
+    subgraph M4[Message #4]
         TB3[TextBlock]
     end
 
-    M1 --> C[Transcript]
-    M2 --> C
-    M3 --> C
+    M1 & M2 & M3 & M4 --> C["Transcript(对话记录)"]
 ```
 
 ### 消息类型化
@@ -104,10 +105,12 @@ const msg2 = new Message("assistant", [
 
 const msg3 = new Message("assistant", [
   new ToolResultBlock("t1", "2", /* isError */ false),
-  //  ↑ kind: "tool_result" — 工具返回的结果，与 callId 配对
+  //  ↑ kind: "tool_result" — 工具返回的结果
+])
 
+const msg4 = new Message("assistant", [
   new TextBlock("结果是 2"),
-  //  ↑ kind: "text"
+  //  ↑ kind: "text"       — 最终回复给用户
 ])
 ```
 
