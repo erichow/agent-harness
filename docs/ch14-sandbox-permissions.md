@@ -53,7 +53,7 @@ flowchart TD
         G25 -->|ask| G25_Ask["暂停 loop，问人"]
         G25_Ask -->|拒绝| G25_Deny
     end
-    G25_Ask --->|批准| G3
+    G25_Ask -->|批准| G3
 
     G25 -->|allow| G3{"闸门 3: 循环检测？"}
 
