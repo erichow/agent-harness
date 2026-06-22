@@ -49,6 +49,11 @@
  *   - allowAll / denyAll / bySideEffect / pathAllowlist / compose — 策略函数
  *   - wrapIfUntrusted — trust label 包装
  *   - defaultCliPrompt / autoAllowPrompt — 人 in loop 提示
+ *
+ * 第 16 章新增导出：
+ *   - Plan / Step / Postcondition / StepStatus — 结构化计划数据模型
+ *   - PlanHolder — Plan 持有者
+ *   - createPlanTools — 4 个 plan 操作工具
  */
 
 export const VERSION = "0.1.0";
@@ -84,6 +89,9 @@ export { allowAll, denyAll, bySideEffect, pathAllowlist, compose } from "./permi
 export type { Policy } from "./permissions/policy.js";
 export { wrapIfUntrusted } from "./permissions/trust.js";
 export { defaultCliPrompt, autoAllowPrompt } from "./permissions/manager.js";
+export { Plan, createStep, createPostcondition, isStepTerminal, StepStatus } from "./plans/model.js";
+export type { Step, Postcondition } from "./plans/model.js";
+export { PlanHolder, createPlanTools } from "./plans/tools.js";
 
 export { ProviderResponse, ToolCallRef, accumulate } from "./providers/base.js";
 export type { Provider } from "./providers/base.js";

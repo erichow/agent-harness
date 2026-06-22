@@ -23,6 +23,7 @@ import { Compactor } from "./context/compactor.js";
 import type { CompactionResult } from "./context/compactor.js";
 import { ToolCatalog, queryFromTranscript, createDiscoveryEntry } from "./tools/selector.js";
 import type { CatalogEntry } from "./tools/selector.js";
+import { PlanHolder } from "./plans/tools.js";
 
 export const MAX_ITERATIONS = 20;
 
@@ -51,6 +52,7 @@ export type OnCompaction = (result: CompactionResult) => void;
  * @param onCompaction - 压缩完成后的回调
  * @param pinnedTools  - 始终包含的工具名（仅 catalog 模式，默认含 list_available_tools）
  * @param toolsPerTurn - 每回合工具数（仅 catalog 模式，默认 7）
+ * @param planHolder   - Plan 持有者（第 16 章：强制 finalization 检查）
  * @returns 模型的最终回答
  */
 export async function arun(
@@ -68,6 +70,7 @@ export async function arun(
   onCompaction?: OnCompaction,
   pinnedTools?: string[],
   toolsPerTurn?: number,
+  planHolder?: PlanHolder,
 ): Promise<string> {
   if (!transcript) {
     transcript = new Transcript(system);
@@ -131,6 +134,22 @@ export async function arun(
     }
 
     if (response.isFinal) {
+      // 第 16 章：Plan finalization 检查
+      if (planHolder?.plan) {
+        const plan = planHolder.plan;
+        if (!plan.isReadyToFinalize()) {
+          const synthetic =
+            "The plan is not complete. Before declaring the " +
+            "task done, either mark remaining steps as done " +
+            "with evidence, verify outstanding postconditions, " +
+            "or mark them blocked with a reason. Current plan:\n\n" +
+            plan.toRender();
+          transcript.append(Message.fromAssistantResponse(response));
+          transcript.append(Message.userText(synthetic));
+          continue;
+        }
+      }
+
       transcript.append(Message.fromAssistantResponse(response));
       return response.text ?? "";
     }
