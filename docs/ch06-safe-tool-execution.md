@@ -3,52 +3,6 @@
 **commit:** （下一个）
 **tag:** ch06-safe-tool-execution
 
----
-
-## 四道闸门
-
-```mermaid
-flowchart TB
-    Call["模型发起工具调用"] --> Gate1
-    
-    subgraph Gate1["闸门 1: 工具存在?"]
-        direction LR
-        G1_Check{name 在 registry 里?}
-        G1_Check -->|否| G1_Suggest["返回: unknown tool<br/>Did you mean 'calc'?"]
-    end
-    
-    Gate1 -->|存在| Gate2
-    
-    subgraph Gate2["闸门 2: 参数校验?"]
-        direction LR
-        G2_Check{args ⊃ schema?}
-        G2_Check -->|否| G2_Errors["返回: 结构化校验错误<br/>一次性列出所有问题"]
-    end
-    
-    Gate2 -->|通过| Gate3
-    
-    subgraph Gate3["闸门 3: 循环检测?"]
-        direction LR
-        G3_Check{"连续3次<br/>完全相同?"}
-        G3_Check -->|是| G3_Loop["返回: 检测到循环<br/>换策略或返回当前答案"]
-    end
-    
-    Gate3 -->|否| Gate4
-    
-    subgraph Gate4["闸门 4: 执行"]
-        direction LR
-        G4_Try["try: handler(args)"]
-        G4_Try -->|成功| G4_OK["返回 ToolResultBlock"]
-        G4_Try -->|异常| G4_Error["catch: 返回结构化错误"]
-    end
-
-    style G1_Suggest fill:#FFB6B6
-    style G2_Errors fill:#FFB6B6
-    style G3_Loop fill:#FFE4B5
-    style G4_OK fill:#90EE90
-    style G4_Error fill:#FFB6B6
-```
-
 ## 为什么需要这个
 
 agent 通过工具跟世界交互——读文件、执行命令、查数据库。但如果工具调用出了问题，后果比"模型回答错误"严重得多。
@@ -126,16 +80,34 @@ faulty raised Error: kaboom
 
 比之前的 `"kaboom"` 多了工具名和异常类型——模型能判断"是这个工具有 bug"还是"我的用法不对"。
 
----
+> **为什么要在执行前检查？** 因为这是所有工具共同的关卡。写在每个工具里面就要重复实现，四道闸门是"一次实现，所有工具受益"。
+>
+> **为什么错误消息要像人话？** 读这些消息的是模型不是程序员。一段自然语言的结构化错误，模型下一回合就能修好；一段 traceback 要它反向推理，多花 1-2 回合。
 
-## 设计思路
+### 流程图
 
-**为什么要在执行前检查，而不是在工具内部检查？**
+```mermaid
+flowchart TD
+    Call["模型发起工具调用"]
+    
+    Call --> G1{"闸门 1: 工具存在？"}
+    G1 -->|不存在| G1_Error["返回: unknown tool<br/>Did you mean 'calc'?"]
+    G1 -->|存在| G2{"闸门 2: 参数校验？"}
+    
+    G2 -->|不通过| G2_Error["返回: 结构化校验错误"]
+    G2 -->|通过| G3{"闸门 3: 循环检测？"}
+    
+    G3 -->|连续 3 次相同| G3_Loop["返回: 检测到循环<br/>换策略"]
+    G3 -->|正常| G4["闸门 4: 执行 handler"]
+    
+    G4 -->|成功| OK["返回 ToolResultBlock"]
+    G4 -->|异常| Error["catch: 返回结构化错误"]
 
-因为这是所有工具共同的关卡。如果把参数校验写在每个工具里面，加一个新工具就要重写一遍校验逻辑。四道闸门是"一次实现，所有工具受益"。
+    style G1_Error fill:#FFB6B6
+    style G2_Error fill:#FFB6B6
+    style G3_Loop fill:#FFE4B5
+    style OK fill:#90EE90
+    style Error fill:#FFB6B6
+```
 
-**为什么错误消息要写得像人话而不是像报错日志？**
-
-因为读这些消息的是模型，不是程序员。一段写给调试器看的 Python traceback 要模型去反向推理；一段结构化的自然语言错误，模型下一回合就能修好。这是 agent 工程里一个容易被忽略但影响巨大的细节。
-
-**四道闸门的效果：** 错误的参数永远不会到达你的工具函数内部，卡住的模型不会浪费 token 原地转圈，拼错名字会被轻轻推一把而不是冷冰冰地拒绝。
+> **四道闸门的效果：** 错误的参数永远不会到达你的工具函数内部，卡住的模型不会浪费 token 原地转圈，拼错名字会被轻轻推一把而不是冷冰冰地拒绝。
