@@ -9,28 +9,9 @@
 
 第一章只有一个空壳。这一章把最核心的东西做出来：**让"模型 + 工具"的对话闭环跑通第一遍。**
 
----
+## 怎么解决的
 
-## Agent 循环流程图
-
-```mermaid
-flowchart TB
-    Input[用户输入] --> Build["1.拼接 prompt<br/>transcript + tool schemas"]
-    Build --> Complete["2.provider.complete()<br/>模型回答"]
-    Complete --> CheckFinal{"3.isFinal?"}
-    CheckFinal -->|是| Output[返回最终文本 ✅]
-    CheckFinal -->|否| CheckTool{"4.isToolCall?"}
-    CheckTool -->|是| Execute["5.执行工具<br/>registry.execute()"]
-    CheckTool -->|否| Error[抛异常 ❌]
-    Execute --> Build
-    
-    style Output fill:#90EE90
-    style Error fill:#FFB6B6
-```
-
-## 核心概念
-
-### 什么是 Agent 循环
+### Agent 循环
 
 Agent 不是"调一次 AI 接口就完事"。它是一个循环：
 
@@ -41,6 +22,10 @@ Agent 不是"调一次 AI 接口就完事"。它是一个循环：
 5. 重复直到模型给出最终答案
 
 这个"提问→回答→可能调工具→再回答"的循环，就是 agent 循环。
+
+> **为什么要有循环？** 模型一次只能做一件事。它必须：调工具→看结果→决定下一步。没有循环，agent 就是一次性问答机。
+>
+> **为什么不让模型自己控制循环？** 技术上可以（ReAct 模式），但把循环控制权交给模型意味着：循环次数不可控、错误处理靠模型自觉、无法加安全护栏。**外部循环就是安全护栏。**
 
 ### 5 种失败方式
 
@@ -56,14 +41,19 @@ Agent 不是"调一次 AI 接口就完事"。它是一个循环：
 
 这一章只处理第 1 种（模型不响应）和第 3 种（工具崩溃），其余的在后续章节逐步解决。
 
----
+### 流程图
 
-## 设计思路
-
-**为什么要有"循环"这个概念？**
-
-因为模型一次只能做一件事。它不能一边调工具一边思考——它必须：调工具→看结果→决定下一步。这个"调工具→看结果→决定"的来回就是循环。没有循环，agent 就是一个一次性的问答机，不是 agent。
-
-**为什么不让模型自己控制循环？**
-
-技术上可以（ReAct 模式就是让模型在回答里写"我需要调 calc 工具"然后解析）。但把循环控制权交给模型意味着：循环次数不可控、错误处理靠模型自觉、无法加安全护栏。**外部循环就是安全护栏。**
+```mermaid
+flowchart TB
+    Input[用户输入] --> Build["1.拼接 prompt<br/>transcript + tool schemas"]
+    Build --> Complete["2.provider.complete()<br/>模型回答"]
+    Complete --> CheckFinal{"3.isFinal?"}
+    CheckFinal -->|是| Output[返回最终文本 ✅]
+    CheckFinal -->|否| CheckTool{"4.isToolCall?"}
+    CheckTool -->|是| Execute["5.执行工具<br/>registry.execute()"]
+    CheckTool -->|否| Error[抛异常 ❌]
+    Execute --> Build
+    
+    style Output fill:#90EE90
+    style Error fill:#FFB6B6
+```
