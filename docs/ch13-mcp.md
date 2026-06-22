@@ -9,26 +9,32 @@
 
 **Model Context Protocol (MCP)**——Anthropic 2024.11 发布——解决一个具体问题：*M×N 集成混乱*。M 个 AI 应用 × N 个外部服务 = M×N 个 bespoke 连接器，每一个都自己一份维护负担。
 
-```
-❌ 没有 MCP: M × N
+```mermaid
+flowchart TB
+    subgraph "❌ 没有 MCP: M × N"
+        Cursor[Cursor] -->|bespoke| GH[GitHub]
+        Claude[Claude Code] -->|bespoke| GH
+        Harness[你的 Agent] -->|bespoke| GH
+        Cursor -->|bespoke| Slack[Slack]
+        Claude -->|bespoke| Slack
+        Harness -->|bespoke| Slack
+        Cursor -->|bespoke| PG[Postgres]
+        Claude -->|bespoke| PG
+        Harness -->|bespoke| PG
+    end
 
-Cursor ──bespoke──→ GitHub
-Cursor ──bespoke──→ Slack
-Cursor ──bespoke──→ Postgres
-Claude Code ──bespoke──→ GitHub
-Claude Code ──bespoke──→ Slack
-你的 Agent ──bespoke──→ GitHub
-你的 Agent ──bespoke──→ Slack
-你的 Agent ──bespoke──→ Postgres
-          ↑  9 个连接器要维护
+    subgraph "✅ 有 MCP: M + N"
+        C2[Cursor] -->|MCP| MCP_Hub[MCP Protocol]
+        C3[Claude Code] -->|MCP| MCP_Hub
+        H2[你的 Agent] -->|MCP| MCP_Hub
+        MCP_Hub -->|MCP| GH2[GitHub]
+        MCP_Hub -->|MCP| Slack2[Slack]
+        MCP_Hub -->|MCP| PG2[Postgres]
+    end
 
-✅ 有 MCP: M + N
-
-Cursor ──MCP──→  ┐
-Claude Code─MCP──┤  MCP Protocol  ──MCP──→ GitHub
-你的 Agent─MCP──→ ┘                 ──MCP──→ Slack
-                                    ──MCP──→ Postgres
-          ↑ 3 个 client 实现 + 3 个 server 实现 = 6
+    style Cursor fill:#FFB6B6
+    style C2 fill:#90EE90
+    style MCP_Hub fill:#90EE90
 ```
 
 MCP 定义一个共同接口（client/server + JSON-RPC 消息），让**任何 MCP-aware client 可以消费任何 MCP-compatible server**。现在 MCP 服务器有数千个——GitHub、Slack、Postgres、filesystem、web fetch、calendar、browser。
@@ -49,17 +55,24 @@ MCP 定义一个共同接口（client/server + JSON-RPC 消息），让**任何 
 
 MCP 协议核心只有 3 步：
 
-```
-Harness (client)                  MCP server (subprocess)
-      │                                  │
-      ├────── initialize ──────────────► │  握手 + 版本协商
-      │◄───── initialized ───────────────│  server ready
-      │                                  │
-      ├────── tools/list ──────────────► │  一次性
-      │◄───── tool schemas ──────────────│  name + desc + input_schema
-      │                                  │
-      ├────── tools/call ──────────────► │  每次工具调用
-      │◄───── 结果 / 错误 ───────────────│
+```mermaid
+sequenceDiagram
+    participant H as Harness (Client)
+    participant S as MCP Server (subprocess)
+
+    H->>S: {"method":"initialize","params":{"protocolVersion":"2024-11-05"}}
+    S-->>H: {"result":{"protocolVersion":"2024-11-05","capabilities":{}}}
+    H->>S: {"method":"notifications/initialized"}
+
+    Note over H,S: 握手完成
+
+    H->>S: {"method":"tools/list"}
+    S-->>H: {"result":{"tools":[{name,description,inputSchema},...]}}
+
+    Note over H,S: 工具发现完成
+
+    H->>S: {"method":"tools/call","params":{"name":"echo","arguments":{"text":"hi"}}}
+    S-->>H: {"result":{"content":[{"type":"text","text":"hi"}]}}
 ```
 
 传输通常是 stdio——client 把 server spawn 成子进程，通过 pipe 交换 JSON-RPC。
@@ -176,67 +189,7 @@ try {
 
 > **MCP 是集成标准，不是安全边界。** 第 14 章加权限层（mutate 闸门、trust-labeled 输出分隔符、per-server allowlist）。在那之前，MCP 集成不安全用于聚集敏感凭据的服务器。
 
-### 流程图
-
-```mermaid
-sequenceDiagram
-    participant H as Harness (Client)
-    participant S as MCP Server (subprocess)
-    
-    H->>S: {"method":"initialize","params":{"protocolVersion":"2024-11-05"}}
-    S-->>H: {"result":{"protocolVersion":"2024-11-05","capabilities":{}}}
-    H->>S: {"method":"notifications/initialized"}
-    
-    Note over H,S: 握手完成
-    
-    H->>S: {"method":"tools/list"}
-    S-->>H: {"result":{"tools":[{name,description,inputSchema},...]}}
-    
-    Note over H,S: 工具发现完成
-    
-    H->>S: {"method":"tools/call","params":{"name":"echo","arguments":{"text":"hi"}}}
-    S-->>H: {"result":{"content":[{"type":"text","text":"hi"}]}}
-```
-
-```mermaid
-flowchart TB
-    subgraph "❌ 没有 MCP: M × N"
-        Cursor[Cursor] -->|bespoke| GH[GitHub]
-        Claude[Claude Code] -->|bespoke| GH
-        Harness[你的 Agent] -->|bespoke| GH
-        Cursor -->|bespoke| Slack[Slack]
-        Claude -->|bespoke| Slack
-        Harness -->|bespoke| Slack
-        Cursor -->|bespoke| PG[Postgres]
-        Claude -->|bespoke| PG
-        Harness -->|bespoke| PG
-    end
-
-    subgraph "✅ 有 MCP: M + N"
-        C2[Cursor] -->|MCP| MCP_Hub[MCP Protocol]
-        C3[Claude Code] -->|MCP| MCP_Hub
-        H2[你的 Agent] -->|MCP| MCP_Hub
-        MCP_Hub -->|MCP| GH2[GitHub]
-        MCP_Hub -->|MCP| Slack2[Slack]
-        MCP_Hub -->|MCP| PG2[Postgres]
-    end
-
-    style Cursor fill:#FFB6B6
-    style C2 fill:#90EE90
-    style MCP_Hub fill:#90EE90
-```
-
 > **和第十二章的关系：** 第十二章的 ToolCatalog 动态加载让本地工具越过悬崖。MCP 工具通过 `wrapMcpTools` 直接进入同样 catalog——selector 不知道、不在意工具是本地还是远程。**动态加载 + MCP = 任意数量外部工具，无悬崖。**
-
----
-
-## 测试
-
-```
- ✓ ch13_mcp.test.ts (14 tests)
-```
-
-覆盖：MCPClient 协议通信（mock server）、工具发现与调用、多服务器连接、wrapMcpTools 转换、ToolRegistry async 方法（aregister / executeAsync）、参数校验、循环检测、数据结构。
 
 ---
 
