@@ -40,9 +40,9 @@ const result2 = await registry.execute("search_docs", { query: "context window c
 
 > **为什么不让系统自动注入？** 自动注入是"猜你需要什么"，agent 驱动是"知道自己需要什么"。后者在技术文档、代码探索这类场景下 query 质量高得多——agent 能看到现有的 context，知道缺口在哪。
 
-### ② Edge-placed——放在窗口末端
+### ② Edge-placed——让 agent 自己把结果放在窗口末端
 
-检索结果作为 ToolResult 回来，跟其它工具结果一样进 transcript。session 一长，它就在 history 的中间——最糟的位置。
+检索结果作为 ToolResult 回来，跟其它工具结果一样进 transcript。session 一长，它就在 history 中间——最糟的位置。
 
 ```
 检索准确率
@@ -60,14 +60,24 @@ const result2 = await registry.execute("search_docs", { query: "context window c
    prompt     (旧 turn)  turn
 ```
 
-**解决方案：两条路**
+**关键设计原则：Edge placement 是 agent 的行为准则，不是 harness 的自动功能。** Harness 不会偷偷搬运消息——agent 要用对的方式写推理，让结果自然落回窗口末端。
+
+怎么做？靠 **③ 显式成本**里那条工具描述指令：
+
+> "After getting results, **quote the relevant passages in your reasoning** — do not rely on memory of them across many turns."
+
+这条指令同时做了两件事：
+- **让结果回到窗口末端**——agent 把命中内容引用进自己的 assistant-message，这一轮写到窗口末尾，下一轮它就是最新的历史条目
+- **防止 agent 凭记忆作答**——逼它每次引用原文，而不是模糊回忆
+
+**两条路对比：**
 
 | 谁来放 | 做法 | 代价 |
 |--------|------|------|
-| Agent 自己 | 在下一回合的推理里把命中**引用进自己的话**：「我找到：……基于此，我会……」——内容占据新鲜的 assistant-message 位置，窗口末端 | 需要 agent 有这个纪律——靠 system prompt 教 |
-| Harness 自动 | 拦截检索结果，作为"合成的最近消息"重新插入在下个 user turn 之前 | 更侵入；可能让模型困惑"发生了什么" |
+| Agent 自己引用 ✅ | 在下一回合推理里把命中引述进自己的话：「我找到：……基于此，我会……」——内容占据新鲜的 assistant-message，窗口末端 | 需要 agent 有这个纪律——靠 tool description 教 |
+| Harness 自动搬运 ❌ | 拦截 ToolResult，作为"合成的最近消息"重新插在 user turn 之前 | 侵入性强，agent 不知道发生了什么，因果推理断裂 |
 
-本书选**第一条**——让 agent 自己引用，它知道自己引用了、知道代价、下次会更谨慎。
+本书选**第一条**。Agent 显式引用，它知道自己引用了、知道代价、下次会更谨慎。
 
 > **为什么不是 harness 自动重排？** 自动重排是隐式行为——agent 不知道"结果被移到末尾了"，可能得出错误的因果推理。Agent 自己引用是显式的，所有因果链都在它的推理里。
 
