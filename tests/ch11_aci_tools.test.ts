@@ -23,6 +23,11 @@
  *    16. 通过 registry 集成
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PROJECT_ROOT = path.resolve(__dirname, "..");
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileViewportTool, editLinesTool } from "../src/harness/tools/files.js";
@@ -221,7 +226,7 @@ describe("readFileViewport", () => {
   it("can read its own source file", () => {
     const [_, handler] = fileViewportTool();
     const result = handler({
-      path: "agent-harness/src/harness/tools/files.ts",
+      path: path.join(PROJECT_ROOT, "src/harness/tools/files.ts"),
       limit: 5,
     });
     expect(result).toContain("file:");

@@ -332,7 +332,7 @@ describe("retry utilities", () => {
 
   it("withRetry throws after exhausting retries", async () => {
     await expect(
-      withRetry(async () => { throw { status: 503 }; }, { maxRetries: 2 }),
+      withRetry(async () => { throw { status: 503 }; }, { maxRetries: 2, maxDelayMs: 100 }),
     ).rejects.toEqual({ status: 503 });
   });
 

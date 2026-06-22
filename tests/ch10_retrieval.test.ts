@@ -15,6 +15,10 @@
 import { describe, it, expect, afterAll } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PROJECT_ROOT = path.resolve(__dirname, "..");
 import { DocumentIndex } from "../src/harness/retrieval/index.js";
 import type { Chunk, SearchHit } from "../src/harness/retrieval/index.js";
 import { RetrievalInterface } from "../src/harness/tools/retrieval.js";
@@ -312,7 +316,7 @@ describe("RetrievalInterface", () => {
 describe("self-test: index harness source", () => {
   it("can index its own source and find relevant code", () => {
     // 索引 harness 的 src/
-    const index = new DocumentIndex("agent-harness/src/harness", 200, 20);
+    const index = new DocumentIndex(path.join(PROJECT_ROOT, "src/harness"), 200, 20);
     expect(index.chunks.length).toBeGreaterThanOrEqual(5);
 
     // 搜索 "BM25" 应该在新文件中有匹配

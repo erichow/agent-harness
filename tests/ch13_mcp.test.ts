@@ -14,6 +14,9 @@
 import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import { MCPClient } from "../src/harness/mcp/client.js";
 import type { MCPServerConfig, MCPTool } from "../src/harness/mcp/client.js";
 import { wrapMcpTools } from "../src/harness/mcp/tools.js";
@@ -23,7 +26,7 @@ import type { AsyncToolHandler } from "../src/harness/tools/registry.js";
 /* ─── Mock MCP Server 脚本 ──────────────────────────────────────── */
 
 const MOCK_SERVER_SCRIPT = path.resolve(
-  "agent-harness/tests/.mock-mcp-server.mjs",
+  __dirname, ".mock-mcp-server.mjs",
 );
 
 /** 创建 mock MCP server 脚本 */

@@ -133,3 +133,16 @@ export type {
   ToolCallDelta,
   Completed,
 } from "./providers/events.js";
+
+/* ─── 第 18 章：可观测性 ─────────────────────────────────────────── */
+
+export {
+  setupTracing,
+  getSessionContext,
+  runWithContext,
+  subagentContext,
+  span,
+  GenAIAttributes,
+  HarnessAttributes,
+} from "./observability/tracing.js";
+export type { SessionContext } from "./observability/tracing.js";
