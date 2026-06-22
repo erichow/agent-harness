@@ -3,44 +3,6 @@
 **commit:** （下一个）
 **tag:** ch08-compaction
 
----
-
-## 压缩流程
-
-```mermaid
-flowchart TB
-    Start[🟡 上下文接近上限] --> Check{state === red?}
-    Check -->|否| Continue[继续正常循环]
-    Check -->|是| Compact[开始压缩]
-    
-    subgraph Compact["Compactor.compact()"]
-        Step1["1.maskOlderResults()<br/>隐藏旧 tool_result blocks<br/>→ 保留最近的 N 个"]
-        Step2["2.summarizePrefix()<br/>总结旧的对话轮次<br/>→ 压缩为简短摘要"]
-        Step3["3.重新计算 budget"]
-        
-        Step1 --> Step2 --> Step3
-    end
-    
-    Compact --> Result{压缩后回到 green?}
-    Result -->|是| Continue
-    Result -->|否| Warn[⚠ 已尽力压缩<br/>但仍超限，预算调高?]
-    
-    subgraph 效果
-        Before["压缩前: 25K tokens<br/>🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡"]
-        After["压缩后: 12K tokens<br/>🟢🟢🟢🟢🟢"]
-    end
-
-    Continue --> Before
-    Before --> After
-
-    style Compact fill:#FFE4B5
-    style Mask fill:#ADD8E6
-    style Summarize fill:#ADD8E6
-    style Warn fill:#FFB6B6
-    style Before fill:#FFE4B5
-    style After fill:#90EE90
-```
-
 ## 为什么需要这个
 
 上一章我们能看到上下文窗口的使用情况了——红色表示窗口快满了。但看到问题不等于解决问题。这一章就是在看到红色时，自动把窗口内容压缩，腾出空间。
@@ -78,22 +40,46 @@ flowchart TB
 
 这是**不可逆的**——细节丢了就丢了。所以只有在遮蔽不够时才用。
 
----
+> **为什么先遮蔽再总结？** 遮蔽是字符串操作，免费、可逆，大多数情况下就够用了。再红色才需要调模型做总结——那是一次付费的 LLM 调用，且不可逆。**先拉便宜的杠杆，不够再拉贵的。**
+>
+> **哪些内容绝对不能丢？** 工具调用的**记录**——"哪个工具被调过、调了几次"。压缩后 agent 不能忘了"已经发过邮件了"，否则会重复执行。压缩策略：遮蔽工具结果的内容，但保留工具调用的痕迹。
+>
+> **如果两级都拉了还是红色？** 记一条警告，然后放弃，让下一轮在模型层失败。这恰恰是操作员需要看到的——"窗口不够用，需要更大模型或更紧凑的设计"。问题可见比默默崩溃好。
+>
+> **压缩后为什么要再发一次状态更新？** 压缩经常发生在倒数第二轮。如果不重新发快照，界面上最后一帧永远是红色，像压缩没起作用。所以压缩完成后会立刻再发一次快照，显示现在已退出红色。
 
-## 设计思路
+### 流程图
 
-**为什么先遮蔽再总结？**
+```mermaid
+flowchart TB
+    Start[🟡 上下文接近上限] --> Check{state === red?}
+    Check -->|否| Continue[继续正常循环]
+    Check -->|是| Compact[开始压缩]
 
-遮蔽是字符串操作，免费、可逆，而且大多数情况下就够用了。只有遮蔽之后还红色才需要用模型做总结——那是一次付费的 LLM 调用，且不可逆。**先拉便宜的杠杆，不够再拉贵的。**
+    subgraph Compact["Compactor.compact()"]
+        Step1["1.maskOlderResults()<br/>隐藏旧 tool_result blocks<br/>→ 保留最近的 N 个"]
+        Step2["2.summarizePrefix()<br/>总结旧的对话轮次<br/>→ 压缩为简短摘要"]
+        Step3["3.重新计算 budget"]
 
-**哪些内容绝对不能丢？**
+        Step1 --> Step2 --> Step3
+    end
 
-工具调用的**记录**——"哪个工具被调过、调了几次"这件事。如果 agent 第 4 轮发了邮件，压缩后它不能忘记"邮件已经发过了"，否则第 20 轮它会再发一次。所以压缩策略是：遮蔽工具结果的内容，但保留工具调用的痕迹。
+    Compact --> Result{压缩后回到 green?}
+    Result -->|是| Continue
+    Result -->|否| Warn[⚠ 已尽力压缩<br/>但仍超限，预算调高?]
 
-**如果两级都拉了还是红色呢？**
+    subgraph 效果
+        Before["压缩前: 25K tokens<br/>🟡🟡🟡🟡🟡🟡🟡🟡🟡🟡"]
+        After["压缩后: 12K tokens<br/>🟢🟢🟢🟢🟢"]
+    end
 
-日志里记一条警告，然后放弃。让下一轮在模型层失败——这恰恰是操作员需要看到的信息："你的窗口不够用，需要更大的模型或者更紧凑的工具设计。"问题可见比默默崩溃好。
+    Continue --> Before
+    Before --> After
 
-**压缩后为什么要再发一次状态更新？**
-
-压缩经常发生在倒数第二轮——压缩完，下一轮模型给出最终答案，会话结束。如果不重新发一次状态更新，界面上看到的最后一帧永远是红色，好像压缩没起作用一样。所以压缩完成后会立刻再发一次快照，显示"压完之后现在是黄色了"。
+    style Compact fill:#FFE4B5
+    style Mask fill:#ADD8E6
+    style Summarize fill:#ADD8E6
+    style Warn fill:#FFB6B6
+    style Before fill:#FFE4B5
+    style After fill:#90EE90
+```
