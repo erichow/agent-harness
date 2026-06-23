@@ -345,36 +345,7 @@ flowchart TB
     L1c --> L5
 ```
 
----
 
-## 各章节贡献的代码组件
-
-| 章节 | 核心组件 | 位置 |
-|------|----------|------|
-| ch1 | 项目骨架、tsconfig、vitest | `package.json`、`tsconfig.json` |
-| ch2 | `run()`、`Provider` 接口 (含 Agent 概念) | `src/harness/agent.ts` |
-| ch3 | `Message`、`Transcript`、4 种 Block | `src/harness/messages.ts` |
-| ch4 | `ToolRegistry`、`ToolDefinition`、`ToolHandler` | `src/harness/tools/registry.ts` |
-| ch5 | `arun()`、`StreamEvent`、`accumulate()` | `src/harness/agent.ts`、`providers/` |
-| ch6 | Schema 校验、循环检测、`Did you mean?` | `src/harness/tools/registry.ts` |
-| ch7 | `ContextAccountant`、`ContextBudget`、`ContextSnapshot` | `src/harness/context/accountant.ts` |
-| ch8 | `Compactor`、`maskOlderResults`、`summarizePrefix` | `src/harness/context/` |
-| ch9 | `Scratchpad`（write/read/list） | `src/harness/tools/scratchpad.ts` |
-| ch10 | `DocumentIndex`（BM25）、`search_docs` | `src/harness/retrieval/` |
-| ch11 | `readFileViewport`、`editLines`、Envelope | `src/harness/tools/files.ts` |
-| ch12 | `ToolCatalog`、`queryFromTranscript`、`createDiscoveryEntry` | `src/harness/tools/selector.ts` |
-| ch13 | `MCPClient`、`wrapMcpTools` | `src/harness/mcp/` |
-| ch14 | `PermissionManager`、Policy、trust label | `src/harness/permissions/` |
-| ch15 | Sub-agent 概念与设计模式 | 文档 |
-| ch16 | `Planner`、`PlanStep`、结构化计划 | `src/harness/plans/` |
-| ch17 | 并行执行概念与设计模式 | 文档 |
-| ch18 | `ObservabilityExporter`、Tracing spans | `src/harness/observability/` |
-| ch19 | `EvalRunner`、trace-based eval | `src/harness/evals/` |
-| ch20 | `CostRouter`、cost enforcer | `src/harness/cost/` |
-| ch21 | `CheckpointManager`、resume/serialize | `src/harness/checkpoint/` |
-| ch22 | 多 provider 迁移策略 | 文档 |
-
----
 
 ## 数据流全景
 
@@ -442,3 +413,33 @@ flowchart TB
     S8 -- 否 --> Final([返回最终回复])
     Layer3 -.->|下一轮| S1
 ```
+
+---
+
+## 各章节贡献的代码组件
+
+| 章节 | 核心组件 | 位置 |
+|------|----------|------|
+| ch1 | 项目骨架、tsconfig、vitest | `package.json`、`tsconfig.json` |
+| ch2 | `run()`、`Provider` 接口 (含 Agent 概念) | `src/harness/agent.ts` |
+| ch3 | `Message`、`Transcript`、4 种 Block | `src/harness/messages.ts` |
+| ch4 | `ToolRegistry`、`ToolDefinition`、`ToolHandler` | `src/harness/tools/registry.ts` |
+| ch5 | `arun()`、`StreamEvent`、`accumulate()` | `src/harness/agent.ts`、`providers/` |
+| ch6 | Schema 校验、循环检测、`Did you mean?` | `src/harness/tools/registry.ts` |
+| ch7 | `ContextAccountant`、`ContextBudget`、`ContextSnapshot` | `src/harness/context/accountant.ts` |
+| ch8 | `Compactor`、`maskOlderResults`、`summarizePrefix` | `src/harness/context/` |
+| ch9 | `Scratchpad`（write/read/list） | `src/harness/tools/scratchpad.ts` |
+| ch10 | `DocumentIndex`（BM25）、`search_docs` | `src/harness/retrieval/` |
+| ch11 | `readFileViewport`、`editLines`、Envelope | `src/harness/tools/files.ts` |
+| ch12 | `ToolCatalog`、`queryFromTranscript`、`createDiscoveryEntry` | `src/harness/tools/selector.ts` |
+| ch13 | `MCPClient`、`wrapMcpTools` | `src/harness/mcp/` |
+| ch14 | `PermissionManager`、Policy、trust label | `src/harness/permissions/` |
+| ch15 | Sub-agent 概念与设计模式 | 文档 |
+| ch16 | `Planner`、`PlanStep`、结构化计划 | `src/harness/plans/` |
+| ch17 | 并行执行概念与设计模式 | 文档 |
+| ch18 | `ObservabilityExporter`、Tracing spans | `src/harness/observability/` |
+| ch19 | `EvalRunner`、trace-based eval | `src/harness/evals/` |
+| ch20 | `CostRouter`、cost enforcer | `src/harness/cost/` |
+| ch21 | `CheckpointManager`、resume/serialize | `src/harness/checkpoint/` |
+| ch22 | 多 provider 迁移策略 | 文档 |
+
