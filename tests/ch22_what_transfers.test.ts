@@ -11,7 +11,8 @@
  */
 import { describe, it, expect } from "vitest";
 import { MockProvider } from "../src/harness/providers/mock.js";
-import { ProviderResponse, ToolCallRef } from "../src/harness/providers/base.js";
+import { DeepSeekProvider } from "../src/harness/providers/deepseek.js";
+import { ProviderResponse, ToolCallRef, accumulate } from "../src/harness/providers/base.js";
 import type { Provider } from "../src/harness/providers/base.js";
 import { Transcript, Message } from "../src/harness/messages.js";
 import { ToolRegistry } from "../src/harness/tools/registry.js";
@@ -254,5 +255,61 @@ describe("Scorecard 概念验证", () => {
     expect(hasLoopDetection).toBe(true);
     expect(hasPermissionModel).toBe(true);
     expect(hasCostModel).toBe(true);
+  });
+});
+
+/* ─── DeepSeek 接缝测试（仅在有 API key 时运行） ─────────────── */
+
+describe.skipIf(!process.env.DEEPSEEK_API_KEY)("DeepSeekProvider 契约验证", () => {
+  it("DeepSeekProvider 通过 Provider 接口一致性检查", () => {
+    const provider: Provider = new DeepSeekProvider();
+    expect(typeof provider.name).toBe("string");
+    expect(typeof provider.complete).toBe("function");
+    expect(typeof provider.astream).toBe("function");
+  });
+
+  it("ProviderResponse 形状与 MockProvider 一致（文本响应）", async () => {
+    const provider = new DeepSeekProvider();
+    const transcript = new Transcript();
+    transcript.append(Message.userText("Say hello"));
+
+    const response = await provider.acomplete(transcript, []);
+
+    // ch22 契约：跨 provider 一致的形状
+    expect(response).toHaveProperty("text");
+    expect(response).toHaveProperty("isFinal");
+    expect(response).toHaveProperty("isToolCall");
+    expect(response).toHaveProperty("toolCalls");
+    expect(typeof response.isFinal).toBe("boolean");
+    expect(Array.isArray(response.toolCalls)).toBe(true);
+  });
+
+  it("astream 事件 kind 在标准集合内", async () => {
+    const provider = new DeepSeekProvider();
+    const transcript = new Transcript();
+    transcript.append(Message.userText("Say hello"));
+
+    const validKinds = new Set([
+      "text_delta", "reasoning_delta",
+      "tool_call_start", "tool_call_delta",
+      "completed",
+    ]);
+
+    for await (const event of provider.astream(transcript, [])) {
+      expect(validKinds.has(event.kind)).toBe(true);
+    }
+  });
+
+  it("accumulate 流式响应 → ProviderResponse 形状正确", async () => {
+    const provider = new DeepSeekProvider();
+    const transcript = new Transcript();
+    transcript.append(Message.userText("Say hello"));
+
+    const response = await accumulate(provider.astream(transcript, []));
+
+    expect(response).toHaveProperty("isFinal");
+    expect(response).toHaveProperty("text");
+    expect(response).toHaveProperty("inputTokens");
+    expect(response).toHaveProperty("outputTokens");
   });
 });

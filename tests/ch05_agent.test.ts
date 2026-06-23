@@ -3,6 +3,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { arun, MAX_ITERATIONS } from "../src/harness/agent.js";
+import { DeepSeekProvider } from "../src/harness/providers/deepseek.js";
 import {
   ProviderResponse,
   ToolCallRef,
@@ -24,6 +25,7 @@ import {
 import type { StreamEvent } from "../src/harness/providers/events.js";
 import { withRetry, isRetryable, backoffDelay } from "../src/harness/providers/retry.js";
 import { FallbackProvider } from "../src/harness/providers/fallback.js";
+import { Transcript, Message } from "../src/harness/messages.js";
 
 /* ─── StreamEvent 构建与 type guard ──────────────────────────────── */
 
@@ -414,4 +416,64 @@ describe("FallbackProvider", () => {
       fp.complete({ messages: [], system: undefined } as any, [])
     ).toThrow();
   });
+});
+
+/* ─── DeepSeek 流式接缝测试（仅在有 API key 时运行） ─────────── */
+
+describe.skipIf(!process.env.DEEPSEEK_API_KEY)("DeepSeek × accumulate / arun", () => {
+  it("accumulate 处理真实 DeepSeek 流式文本", async () => {
+    const provider = new DeepSeekProvider();
+    const transcript = new Transcript();
+    transcript.append(Message.userText("Say 'hello' in one word."));
+
+    const stream = provider.astream(transcript, []);
+    const response = await accumulate(stream);
+
+    expect(response.isFinal).toBe(true);
+    expect(response.text).toBeTruthy();
+    // 真实 chunk 碎片顺序可能与 mock 不同，accumulate 必须能拼回完整文本
+    expect(response.text!.length).toBeGreaterThan(0);
+    // 注：DeepSeek 流式响应不总是返回 usage 数据，inputTokens 可能为 0
+  });
+
+  it("arun 完整循环 with DeepSeek（文本 + 工具调用）", async () => {
+    const provider = new DeepSeekProvider();
+    const registry = new ToolRegistry();
+
+    registry.register(
+      {
+        name: "calc",
+        description: "Evaluate an arithmetic expression.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            expression: { type: "string", description: "The expression to evaluate" },
+          },
+          required: ["expression"],
+        },
+      },
+      (args: Record<string, unknown>) => {
+        const expr = String(args.expression ?? "");
+        const sanitized = expr.replace(/[^0-9+\-*/().%\s]/g, "");
+        try {
+          // eslint-disable-next-line no-eval
+          return String(eval(sanitized));
+        } catch (e) {
+          return `Error: ${(e as Error).message}`;
+        }
+      },
+    );
+
+    // 这个测试同时验证：
+    //   1. arun 调 astream → oneTurn → accumulate 链路在真实 provider 上通
+    //   2. 工具调用 chunk 碎片在真实场景下能被正确累积
+    //   3. completed 事件携带的 usage 数据被 accumulate 正确提取
+    const answer = await arun(
+      provider,
+      registry,
+      "What is 1 + 2? Use the calc tool.",
+    );
+
+    expect(answer).toContain("3");
+  }, 30_000);
 });

@@ -105,6 +105,8 @@ export { PlanHolder, createPlanTools } from "./plans/tools.js";
 export { ProviderResponse, ToolCallRef, accumulate } from "./providers/base.js";
 export type { Provider } from "./providers/base.js";
 export { MockProvider } from "./providers/mock.js";
+export { DeepSeekProvider } from "./providers/deepseek.js";
+export type { DeepSeekProviderOptions } from "./providers/deepseek.js";
 export { FallbackProvider } from "./providers/fallback.js";
 export { withRetry, isRetryable, backoffDelay } from "./providers/retry.js";
 
