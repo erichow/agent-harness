@@ -8,7 +8,11 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { DeepSeekProvider, toOpenAIMessages, toOpenAITools, toProviderResponse } from "../src/harness/providers/deepseek.js";
 import { Transcript, Message, textBlock, toolCallBlock, toolResultBlock, reasoningBlock } from "../src/harness/messages.js";
-import { ProviderResponse, ToolCallRef } from "../src/harness/providers/base.js";
+import { ProviderResponse, ToolCallRef, accumulate } from "../src/harness/providers/base.js";
+import type { Provider } from "../src/harness/providers/base.js";
+import { arun } from "../src/harness/agent.js";
+import { ToolRegistry } from "../src/harness/tools/registry.js";
+import { ContextAccountant, ContextSnapshot } from "../src/harness/context/accountant.js";
 
 /* ─── 环境变量管理 ─────────────────────────────────────────────── */
 
@@ -490,6 +494,148 @@ describe("astream（mock）", () => {
     expect(kinds).toContain("reasoning_delta");
     expect(kinds).toContain("text_delta");
     expect(kinds).toContain("completed");
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════
+ * 以下 seam 测试来自 ch05 / ch07 / ch22 — 需要真实 DEEPSEEK_API_KEY
+ * 在 mock 测不到的真实 API 行为上做最终验证。
+ ═══════════════════════════════════════════════════════════════════ */
+
+describe.skipIf(!process.env.DEEPSEEK_API_KEY)("DeepSeek (real API)", () => {
+  it("accumulate 处理真实 DeepSeek 流式文本", async () => {
+    const provider = new DeepSeekProvider();
+    const transcript = new Transcript();
+    transcript.append(Message.userText("Say 'hello' in one word."));
+
+    const stream = provider.astream(transcript, []);
+    const response = await accumulate(stream);
+
+    expect(response.isFinal).toBe(true);
+    expect(response.text).toBeTruthy();
+    // 真实 chunk 碎片顺序可能与 mock 不同，accumulate 必须能拼回完整文本
+    expect(response.text!.length).toBeGreaterThan(0);
+    // 注：DeepSeek 流式响应不总是返回 usage 数据，inputTokens 可能为 0
+  });
+
+  it("arun 完整循环 with DeepSeek（文本 + 工具调用）", async () => {
+    const provider = new DeepSeekProvider();
+    const registry = new ToolRegistry();
+
+    registry.register(
+      {
+        name: "calc",
+        description: "Evaluate an arithmetic expression.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            expression: { type: "string", description: "The expression to evaluate" },
+          },
+          required: ["expression"],
+        },
+      },
+      (args: Record<string, unknown>) => {
+        const expr = String(args.expression ?? "");
+        const sanitized = expr.replace(/[^0-9+\-*/().%\s]/g, "");
+        try {
+          // eslint-disable-next-line no-eval
+          return String(eval(sanitized));
+        } catch (e) {
+          return `Error: ${(e as Error).message}`;
+        }
+      },
+    );
+
+    // 这个测试同时验证：
+    //   1. arun 调 astream → oneTurn → accumulate 链路在真实 provider 上通
+    //   2. 工具调用 chunk 碎片在真实场景下能被正确累积
+    //   3. completed 事件携带的 usage 数据被 accumulate 正确提取
+    const answer = await arun(
+      provider,
+      registry,
+      "What is 1 + 2? Use the calc tool.",
+    );
+
+    expect(answer).toContain("3");
+  }, 30_000);
+
+  it("流式不返回 usage 时 ContextAccountant 不崩", async () => {
+    // DeepSeek 流式响应有时不携带 usage 数据。
+    // ContextAccountant 必须能处理 outputTokens=0 的 completed 事件。
+    const provider = new DeepSeekProvider();
+    const registry = new ToolRegistry();
+    const accountant = new ContextAccountant();
+    const snapshots: ContextSnapshot[] = [];
+
+    await arun(
+      provider,
+      registry,
+      "Say 'hello' in one word.",
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      (s) => snapshots.push(s),
+      accountant,
+    );
+
+    // 循环至少走了 1 轮，snapshot 没有被 0 token 搞崩
+    expect(snapshots.length).toBeGreaterThanOrEqual(1);
+    // snapshot 的 state 应该是 green（这么短的对话不会超）
+    expect(["green", "yellow"]).toContain(snapshots[0].state);
+  }, 20_000);
+
+  it("ProviderResponse 契约形状与 MockProvider 一致", async () => {
+    const provider = new DeepSeekProvider();
+    const transcript = new Transcript();
+    transcript.append(Message.userText("Say hello"));
+
+    const response = await provider.acomplete(transcript, []);
+
+    // ch22 契约：跨 provider 一致的形状
+    expect(response).toHaveProperty("text");
+    expect(response).toHaveProperty("isFinal");
+    expect(response).toHaveProperty("isToolCall");
+    expect(response).toHaveProperty("toolCalls");
+    expect(typeof response.isFinal).toBe("boolean");
+    expect(Array.isArray(response.toolCalls)).toBe(true);
+  });
+
+  it("astream 事件 kind 在标准集合内", async () => {
+    const provider = new DeepSeekProvider();
+    const transcript = new Transcript();
+    transcript.append(Message.userText("Say hello"));
+
+    const validKinds = new Set([
+      "text_delta", "reasoning_delta",
+      "tool_call_start", "tool_call_delta",
+      "completed",
+    ]);
+
+    for await (const event of provider.astream(transcript, [])) {
+      expect(validKinds.has(event.kind)).toBe(true);
+    }
+  });
+
+  it("accumulate 流式响应 → ProviderResponse 形状正确", async () => {
+    const provider = new DeepSeekProvider();
+    const transcript = new Transcript();
+    transcript.append(Message.userText("Say hello"));
+
+    const response = await accumulate(provider.astream(transcript, []));
+
+    expect(response).toHaveProperty("isFinal");
+    expect(response).toHaveProperty("text");
+    expect(response).toHaveProperty("inputTokens");
+    expect(response).toHaveProperty("outputTokens");
+  });
+
+  it("DeepSeekProvider 通过 Provider 接口一致性检查", () => {
+    const provider: Provider = new DeepSeekProvider();
+    expect(typeof provider.name).toBe("string");
+    expect(typeof provider.complete).toBe("function");
+    expect(typeof provider.astream).toBe("function");
   });
 });
 

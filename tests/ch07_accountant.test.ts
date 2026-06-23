@@ -9,7 +9,6 @@
  *   5. agent 集成 — onSnapshot 回调
  */
 import { describe, it, expect } from "vitest";
-import { DeepSeekProvider } from "../src/harness/providers/deepseek.js";
 import {
   ContextBudget,
   ContextSnapshot,
@@ -259,33 +258,4 @@ describe("agent integration with ContextAccountant", () => {
   });
 });
 
-/* ─── DeepSeek 接缝测试（仅在有 API key 时运行） ─────────────── */
 
-describe.skipIf(!process.env.DEEPSEEK_API_KEY)("DeepSeek × ContextAccountant", () => {
-  it("DeepSeek 流式不返回 usage 时 accountant 不崩", async () => {
-    // DeepSeek 流式响应有时不携带 usage 数据。
-    // ContextAccountant 必须能处理 outputTokens=0 的 completed 事件。
-    const provider = new DeepSeekProvider();
-    const registry = new ToolRegistry();
-    const accountant = new ContextAccountant();
-    const snapshots: ContextSnapshot[] = [];
-
-    await arun(
-      provider,
-      registry,
-      "Say 'hello' in one word.",
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      (s) => snapshots.push(s),
-      accountant,
-    );
-
-    // 循环至少走了 1 轮，snapshot 没有被 0 token 搞崩
-    expect(snapshots.length).toBeGreaterThanOrEqual(1);
-    // snapshot 的 state 应该是 green（这么短的对话不会超）
-    expect(["green", "yellow"]).toContain(snapshots[0].state);
-  }, 20_000);
-});
