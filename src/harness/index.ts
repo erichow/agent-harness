@@ -146,3 +146,13 @@ export {
   HarnessAttributes,
 } from "./observability/tracing.js";
 export type { SessionContext } from "./observability/tracing.js";
+
+/* ─── 第 19 章：评测 (Evals) ────────────────────────────────────── */
+
+export { EvalRunner } from "./evals/runner.js";
+export { judge } from "./evals/judge.js";
+export type { JudgeOptions } from "./evals/judge.js";
+export { caseFromTrace } from "./evals/from_trace.js";
+export type { TraceSummary } from "./evals/from_trace.js";
+export { runStability } from "./evals/stability.js";
+export type { EvalCase, EvalResult, StabilityReport } from "./evals/case.js";

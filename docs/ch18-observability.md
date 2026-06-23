@@ -363,11 +363,3 @@ flowchart TB
 - **第 17 章（并行）** 的 Promise.all 扇出中，每个并行 sub-agent 的 traces 通过 session_id 关联到同一请求
 - **第 20 章（成本控制）** 参考这里的 per-agent 成本归因，实现自动 kill
 
----
-
-## 参考
-
-- Dapper (Sigelman et al. 2010) — 分布式 trace 的奠基论文，每个现代追踪系统的祖先
-- OpenTelemetry GenAI Semantic Conventions — experimental 但已稳到可建之上（Datadog、Langfuse、Braintrust 已接入）
-- *Your AI Agent Spent $500 Overnight and Nobody Noticed* (DEV Community, 2025) — 本章 cost attribution 解决的问题
-- Jaeger / Zipkin / Honeycomb / Datadog APM — 生产可观测性平台
