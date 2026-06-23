@@ -23,13 +23,12 @@
  *    16. 通过 registry 集成
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(__dirname, "..");
-import * as fs from "node:fs";
-import * as path from "node:path";
 import { fileViewportTool, editLinesTool } from "../src/harness/tools/files.js";
 import { ToolRegistry } from "../src/harness/tools/registry.js";
 
@@ -246,7 +245,7 @@ describe("editLines", () => {
     fs.rmSync(TEST_DIR, { recursive: true, force: true });
   });
 
-  let originalContent: string;
+  let originalContent: string[];
   let filePath: string;
 
   beforeEach(() => {

@@ -5,8 +5,8 @@
  * 用另一个 LLM 当 judge。
  */
 
-import type { Provider, ProviderResponse } from "../providers/base.js";
-import { Transcript } from "../messages.js";
+import type { Provider } from "../providers/base.js";
+import { Transcript, Message } from "../messages.js";
 
 export interface JudgeOptions {
   /** 评判标准，如 "accuracy, completeness, relevance" */
@@ -49,7 +49,7 @@ export async function judge(
 
   user += `Criteria: ${options.criteria ?? "accuracy, completeness, relevance"}`;
 
-  transcript.append({ role: "user", content: user });
+  transcript.append(Message.userText(user));
 
   const response = await judgeProvider.complete(transcript, []);
   const text = response.text ?? "";

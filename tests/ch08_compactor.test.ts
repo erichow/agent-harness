@@ -142,7 +142,10 @@ describe("summarizePrefix", () => {
     expect(t.messages.length).toBe(4);
     expect(t.messages[0].blocks[0].kind).toBe("text");
     expect(t.messages[1].blocks[0].kind).toBe("text");
-    expect(t.messages[1].blocks[0].text).toContain("session summary");
+    const block = t.messages[1].blocks[0];
+    if (block.kind === "text") {
+      expect(block.text).toContain("session summary");
+    }
   });
 });
 

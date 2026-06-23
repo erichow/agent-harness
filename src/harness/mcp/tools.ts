@@ -9,8 +9,8 @@
  *   - 默认 side_effects = network + mutate（悲观默认）
  *   - 异步 handler——MCP 调用本质是 async IO
  */
-import type { CatalogEntry } from "./selector.js";
-import type { ToolDefinition } from "./registry.js";
+import type { CatalogEntry } from "../tools/selector.js";
+import type { ToolDefinition } from "../tools/registry.js";
 import { MCPClient } from "./client.js";
 
 /**
@@ -39,7 +39,7 @@ export function wrapMcpTools(client: MCPClient): CatalogEntry[] {
 
     entries.push({
       definition,
-      handler: handler as (args: Record<string, unknown>) => string,
+      handler: handler as unknown as (args: Record<string, unknown>) => string,
       asyncHandler: handler,
     });
   }
