@@ -1,12 +1,11 @@
-# Agent Harness 架构全景 · 第 0-22 章
+# Agent Harness 架构全景 · 第 1-22 章
 
 ```mermaid
 mindmap
   root((Agent Harness))
     第一部分：基础
-      第0章_项目骨架
-      第1章_Agent概念
-      第2章_最小循环
+      第1章_项目骨架
+      第2章_Agent概念与最小循环
       第3章_类型消息
     第二部分：工具与执行
       第4章_工具协议
@@ -37,55 +36,56 @@ mindmap
 
 ---
 
-## 第一部分：基础（第 0-3 章）
+## 第一部分：基础（第 1-3 章）
 
 ```mermaid
 flowchart LR
-    subgraph "第0章 · 项目骨架"
-        A0[Package.json<br/>TypeScript + Vitest<br/>项目结构]
+    subgraph "第1章 · 项目骨架"
+        A1[Package.json<br/>TypeScript + Vitest<br/>项目结构]
     end
 
-    subgraph "第1章 · Agent 概念"
-        A1[Model + Loop + Tools<br/>= Agent<br/>Workflow ≠ Agent]
-    end
-
-    subgraph "第2章 · 最小循环"
-        A2[Provider.complete<br/>Transcript<br/>while loop<br/>同步 run()]
+    subgraph "第2章 · Agent概念与最小循环"
+        A2["Model + Loop + Tools<br/>= Agent<br/>Provider.complete<br/>while loop<br/>同步 run()"]
     end
 
     subgraph "第3章 · 类型消息"
         A3[4种Block: Text<br/>ToolCall<br/>ToolResult<br/>Reasoning<br/>Message + Transcript]
     end
 
-    A0 --> A1 --> A2 --> A3
+    A1 --> A2 --> A3
 ```
 
 ### 关键概念流
 
-```
-用户输入
-  │
-  ▼
-┌──────────────────────────┐
-│  2. Loop                 │
-│  while (iter < MAX) {    │
-│    response = provider   │
-│      .complete(transcript)│
-│    if final → return     │
-│    if tool_call → execute │
-│  }                       │
-└──────────────────────────┘
-  │
-  ▼
-┌──────────────────────────┐
-│  3. Transcript           │
-│  ┌─────┬──────┬────────┐ │
-│  │user │assis │tool_res│ │
-│  │text │tant  │ult     │ │
-│  │     │tool_c│        │ │
-│  │     │alls  │        │ │
-│  └─────┴──────┴────────┘ │
-└──────────────────────────┘
+```mermaid
+flowchart TB
+    Input([用户输入]) --> Loop
+
+    subgraph Loop["2.Loop"]
+        direction TB
+        L1["response = provider.complete(transcript)"]
+        L2{"final?"}
+        L3{"tool_call?"}
+        L4["execute 工具"]
+        L5["iter++ 继续循环"]
+
+        L1 --> L2
+        L2 -- 否 --> L3
+        L3 -- 是 --> L4 --> L5 --> L1
+        L3 -- 否 --> L5
+    end
+
+    L2 -- 是 --> Final([返回最终回复])
+
+    Loop -.-> Transcript
+
+    subgraph Transcript["3.Transcript"]
+        direction TB
+        T1["user text"]
+        T2["assistant tool_calls"]
+        T3["tool_result"]
+        T1 --> T2 --> T3
+    end
 ```
 
 ---
@@ -93,13 +93,13 @@ flowchart LR
 ## 第二部分：工具与执行（第 4-6 章）
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph "第4章 · 工具协议"
         T4[ToolDefinition<br/>name + description + inputSchema<br/>ToolHandler 函数<br/>ToolRegistry]
     end
 
     subgraph "第5章 · 流式与中断"
-        T5[astream 流式事件<br/>TextDelta | ToolCallDelta<br/>5种 StreamEvent<br/>arun async loop<br/>中断恢复]
+        T5["astream 流式事件<br/>TextDelta | ToolCallDelta<br/>5种 StreamEvent<br/>arun async loop<br/>中断恢复"]
     end
 
     subgraph "第6章 · 安全执行"
@@ -111,19 +111,28 @@ flowchart TB
 
 ### execute() 的 4 道闸门
 
-```
-工具调用
-  │
-  ├─ 闸门 1: name 存在? ──否──→ unknown: "Did you mean calc?"
-  │       是
-  ├─ 闸门 2: args ⊃ schema? ──否──→ validation error
-  │       是
-  ├─ 闸门 3: 去重器? ──是──→ "连续3次相同调用，换策略"
-  │       否
-  └─ 闸门 4: execute ──异常──→ error result (try/catch)
-           │
-           ▼
-        ToolResultBlock
+```mermaid
+flowchart TB
+    Input([工具调用]) --> G1
+
+    G1{"闸门 1:<br/>name 存在?"}
+    G1NO["→ unknown<br/>Did you mean calc?"]
+    G2{"闸门 2:<br/>args ⊃ schema?"}
+    G2NO["→ validation error"]
+    G3{"闸门 3:<br/>去重器?<br/>连续3次相同调用"}
+    G3YES["→ 换策略"]
+    G4{"闸门 4:<br/>execute"}
+    G4ERR["← 异常 →<br/>error result<br/>try/catch"]
+    DONE["ToolResultBlock"]
+
+    G1 -- 否 --> G1NO
+    G1 -- 是 --> G2
+    G2 -- 否 --> G2NO
+    G2 -- 是 --> G3
+    G3 -- 是 --> G3YES
+    G3 -- 否 --> G4
+    G4 -- 异常 --> G4ERR
+    G4 -- 成功 --> DONE
 ```
 
 ---
@@ -160,24 +169,41 @@ flowchart LR
 
 ### 上下文生命周期
 
-```
-每回合:
-  1. Accountant.snapshot()
-     ├─ green → 继续
-     ├─ yellow → 警告
-     └─ red → Compactor.compact()
-              ├─ maskOlderResults(隐藏旧工具结果)
-              └─ summarizePrefix(总结旧轮次)
+```mermaid
+flowchart TB
+    subgraph "每回合"
+        direction TB
+        SNAPSHOT["1. Accountant.snapshot()"]
+        GREEN["green → 继续"]
+        YELLOW["yellow → 警告"]
+        RED["red → Compactor.compact()"]
+        MASK["maskOlderResults<br/>隐藏旧工具结果"]
+        SUMM["summarizePrefix<br/>总结旧轮次"]
 
-  2. 新内容写入 transcript
-     ├─ assistant 消息
-     ├─ tool_call 消息
-     └─ tool_result 消息
+        SNAPSHOT --> GREEN
+        SNAPSHOT --> YELLOW
+        SNAPSHOT --> RED
+        RED --> MASK
+        RED --> SUMM
+    end
 
-  3. 重要的东西不在 transcript:
-     ├─ Scratchpad(磁盘文件)
-     ├─ DocumentIndex(BM25检索)
-     └─ 下一回合 agent 引用/检索回来
+    subgraph "2. 新内容写入 transcript"
+        T1["assistant 消息"]
+        T2["tool_call 消息"]
+        T3["tool_result 消息"]
+        T1 --> T2 --> T3
+    end
+
+    subgraph "3. 重要的东西不在 transcript"
+        O1["Scratchpad<br/>磁盘文件"]
+        O2["DocumentIndex<br/>BM25检索"]
+        O3["下一回合 agent<br/>引用/检索回来"]
+        O1 --- O2 --- O3
+    end
+
+    SNAPSHOT -.->|写入| T1
+    T3 -.->|存不下的| O1
+    T3 -.->|搜不到的| O2
 ```
 
 ---
@@ -185,9 +211,9 @@ flowchart LR
 ## 第四部分：规模化（第 12-14 章）
 
 ```mermaid
-flowchart TB
+flowchart LR
     subgraph "第12章 · 动态加载"
-        S12[ToolCatalog<br/>BM25 索引工具名+描述<br/>select(query, k, pinned)<br/>queryFromTranscript<br/>list_available_tools 钉死]
+        S12["ToolCatalog<br/>BM25 索引工具名+描述<br/>select(query, k, pinned)<br/>queryFromTranscript<br/>list_available_tools 钉死"]
     end
 
     subgraph "第13章 · MCP"
@@ -204,38 +230,43 @@ flowchart TB
 
 ### 第 12 章：每回合工具选择流程
 
-```
-完整 Catalog (30 tools)
-  │
-  ├─ pinned: list_available_tools (永远钉死)
-  │
-  └─ BM25.select(query, k=7)
-       │
-       query = queryFromTranscript(transcript)
-       │   = 首条user消息 + 最近3条assistant消息
-       │
-       ▼
-  选中的 7 个工具 → 临时 ToolRegistry
-       │
-       ▼
-  模型看到 7 个工具 → schema 占 token 少 75%
+```mermaid
+flowchart TB
+    CATALOG["完整 Catalog<br/>(30 tools)"]
+    PINNED["pinned: list_available_tools<br/>永远钉死"]
+    BM25["BM25.select(query, k=7)"]
+    QUERY["query = queryFromTranscript(transcript)<br/>= 首条user消息 + 最近3条assistant消息"]
+    SELECTED["选中的 7 个工具 → 临时 ToolRegistry"]
+    MODEL["模型看到 7 个工具<br/>→ schema 占 token 少 75%"]
+
+    CATALOG --> PINNED
+    CATALOG --> BM25
+    QUERY -.-> BM25
+    BM25 --> SELECTED --> MODEL
 ```
 
 ### 第 14 章：executeAsync 的 5 道闸门
 
-```
-工具调用
-  │
-  ├─ 闸门 1: name 存在?
-  ├─ 闸门 2: args ⊃ schema?
-  ├─ 闸门 2.5: permission 通过? ←─ 第14章新增
-  │    ├─ allow → 继续
-  │    ├─ deny  → 返回错误
-  │    └─ ask   → 暂停，等人批准 → 缓存到 session
-  ├─ 闸门 3: 去重器?
-  └─ 闸门 4: execute
-       │
-       └─ trust label: MCP 输出包 <untrusted_content>
+```mermaid
+flowchart TB
+    Input([工具调用]) --> G1
+
+    G1["闸门 1: name 存在?"]
+    G2["闸门 2: args ⊃ schema?"]
+    G25{"闸门 2.5:<br/>permission 通过?<br/>← 第14章新增"}
+    ALLOW["allow → 继续"]
+    DENY["deny → 返回错误"]
+    ASK["ask → 暂停，等人批准<br/>→ 缓存到 session"]
+    G3["闸门 3: 去重器?"]
+    G4["闸门 4: execute"]
+    TRUST["trust label:<br/>MCP 输出包 &lt;untrusted_content&gt;"]
+    DONE["ToolResultBlock"]
+
+    G1 --> G2 --> G25
+    G25 -- allow --> ALLOW --> G3
+    G25 -- deny --> DENY
+    G25 -- ask --> ASK
+    G3 --> G4 --> TRUST --> DONE
 ```
 
 ---
@@ -272,7 +303,7 @@ flowchart TB
 ```mermaid
 flowchart TB
     subgraph "Layer 1: 消息与循环"
-        L1a["Provider (API)")
+        L1a["Provider (API)"]
         L1b["Transcript (消息容器)"]
         L1c[arun 循环]
     end
@@ -316,43 +347,12 @@ flowchart TB
 
 ---
 
-## 章节依赖关系
-
-```mermaid
-flowchart LR
-    ch0[ch0 项目骨架] --> ch1
-    ch1[ch1 Agent概念] --> ch2
-    ch2[ch2 最小循环] --> ch3
-    ch3[ch3 类型消息] --> ch4
-    ch4[ch4 工具协议] --> ch5
-    ch5[ch5 流式中断] --> ch6
-    ch6[ch6 安全执行] --> ch7
-    ch7[ch7 记账] --> ch8
-    ch8[ch8 压缩] --> ch9
-    ch9[ch9 Scratchpad] --> ch10
-    ch10[ch10 检索] --> ch11
-    ch11[ch11 ACI工具] --> ch12
-    ch12[ch12 动态加载] --> ch13
-    ch13[ch13 MCP] --> ch14
-    ch14[ch14 权限] --> ch15
-    ch15[ch15 子智能体] --> ch16
-    ch16[ch16 结构化计划] --> ch17
-    ch17[ch17 并行执行] --> ch18
-    ch18[ch18 可观测性] --> ch19
-    ch19[ch19 评测] --> ch20
-    ch20[ch20 成本控制] --> ch21
-    ch21[ch21 可恢复] --> ch22
-    ch22[ch22 收束]
-```
-
----
-
 ## 各章节贡献的代码组件
 
 | 章节 | 核心组件 | 位置 |
 |------|----------|------|
-| ch0 | 项目骨架、tsconfig、vitest | `package.json`、`tsconfig.json` |
-| ch1-2 | `run()`、`Provider` 接口 | `src/harness/agent.ts` |
+| ch1 | 项目骨架、tsconfig、vitest | `package.json`、`tsconfig.json` |
+| ch2 | `run()`、`Provider` 接口 (含 Agent 概念) | `src/harness/agent.ts` |
 | ch3 | `Message`、`Transcript`、4 种 Block | `src/harness/messages.ts` |
 | ch4 | `ToolRegistry`、`ToolDefinition`、`ToolHandler` | `src/harness/tools/registry.ts` |
 | ch5 | `arun()`、`StreamEvent`、`accumulate()` | `src/harness/agent.ts`、`providers/` |
@@ -366,44 +366,79 @@ flowchart LR
 | ch13 | `MCPClient`、`wrapMcpTools` | `src/harness/mcp/` |
 | ch14 | `PermissionManager`、Policy、trust label | `src/harness/permissions/` |
 | ch15 | Sub-agent 概念与设计模式 | 文档 |
+| ch16 | `Planner`、`PlanStep`、结构化计划 | `src/harness/plans/` |
+| ch17 | 并行执行概念与设计模式 | 文档 |
+| ch18 | `ObservabilityExporter`、Tracing spans | `src/harness/observability/` |
+| ch19 | `EvalRunner`、trace-based eval | `src/harness/evals/` |
+| ch20 | `CostRouter`、cost enforcer | `src/harness/cost/` |
+| ch21 | `CheckpointManager`、resume/serialize | `src/harness/checkpoint/` |
+| ch22 | 多 provider 迁移策略 | 文档 |
 
 ---
 
 ## 数据流全景
 
-```
-用户消息
-  │
-  ▼
-┌─────────────────────────────────────────────────────────┐
-│  Layer 1: 循环 (arun)                                    │
-│  1. ToolCatalog.select(query)    ← 第12章                │
-│  2. create turnRegistry          ← 第12章                │
-│  3. Accountant.snapshot()        ← 第7章                 │
-│  4. if red → Compactor.compact() ← 第8章                 │
-│  5. Provider.astream()           ← 第5章                 │
-│  6. accumulate() → response      ← 第5章                 │
-│  7. if tool_call → dispatch      ← 第4/6/13/14章         │
-└─────────────────────────────────────────────────────────┘
-  │
-  ▼
-┌─────────────────────────────────────────────────────────┐
-│  Layer 2: 工具派发 (executeAsync)                        │
-│  闸门 1: name 存在?                                     │
-│  闸门 2: Schema 校验           ← 第6章                    │
-│  闸门 2.5: Permission check    ← 第14章                   │
-│  闸门 3: Loop detection        ← 第6章                    │
-│  闸门 4: Execute + trust label ← 第14章                   │
-│    ├─ 本地工具: handler(args)                             │
-│    ├─ MCP工具: client.call()   ← 第13章                   │
-│    └─ 输出: wrapIfUntrusted                               │
-└─────────────────────────────────────────────────────────┘
-  │
-  ▼
-┌─────────────────────────────────────────────────────────┐
-│  Layer 3: 结果处理                                       │
-│  ToolResult → transcript.append()                       │
-│  Accountant 记账（token 变多）                            │
-│  下一回合 → 回到 Layer 1                                  │
-└─────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    User([用户消息]) --> Layer1
+
+    subgraph Layer1["Layer 1: 循环 (arun)"]
+        direction TB
+        S1["① ToolCatalog.select(query)<br/>← 第12章 BM25 选工具"]
+        S2["② create turnRegistry<br/>← 第12章 临时注册"]
+        S3["③ Accountant.snapshot()<br/>← 第7章 上下文记账"]
+        S4{"④ red?"}
+        S5["Compactor.compact()<br/>← 第8章 压缩"]
+        S6["⑤ Provider.astream()<br/>← 第5章 流式调用 LLM"]
+        S7["⑥ accumulate() → response<br/>← 第5章 攒成消息"]
+        S8{"⑦ tool_call?"}
+
+        S1 --> S2 --> S3 --> S4
+        S4 -- 是 --> S5 --> S6
+        S4 -- 否 --> S6
+        S6 --> S7 --> S8
+    end
+
+    S8 -- 是 --> Layer2
+
+    subgraph Layer2["Layer 2: 工具派发 (executeAsync)"]
+        direction TB
+        G1["闸门 1: name 存在?"]
+        G1ERR["→ unknown 错误"]
+        G2["闸门 2: Schema 校验<br/>← 第6章"]
+        G2ERR["→ validation 错误"]
+        G25["闸门 2.5: Permission check<br/>← 第14章 allow/deny/ask"]
+        G25ERR["→ deny 错误 / ask 暂停"]
+        G3["闸门 3: Loop detection<br/>← 第6章 连续重复检测"]
+        G3ERR["→ 建议换策略"]
+        G4{"闸门 4: Execute"}
+        LOCAL["本地工具: handler(args)"]
+        MCP["MCP工具: client.call()<br/>← 第13章"]
+        TRUST["wrapIfUntrusted<br/>← 第14章 trust label"]
+
+        G1 -- 不存在 --> G1ERR
+        G1 -- 存在 --> G2
+        G2 -- 不通过 --> G2ERR
+        G2 -- 通过 --> G25
+        G25 -- 拒绝 --> G25ERR
+        G25 -- 允许 --> G3
+        G3 -- 命中重复 --> G3ERR
+        G3 -- 通过 --> G4
+        G4 --> LOCAL
+        G4 --> MCP
+        LOCAL --> TRUST
+        MCP --> TRUST
+    end
+
+    TRUST --> Layer3
+
+    subgraph Layer3["Layer 3: 结果处理"]
+        R1["ToolResult → transcript.append()"]
+        R2["Accountant 记账<br/>(token 变多)"]
+        R3["→ 下一回合回到 Layer 1"]
+        R1 --> R2 --> R3
+    end
+
+    S8 -- 否 --> Final([返回最终回复])
+    Layer3 -.->|下一轮| S1
 ```
