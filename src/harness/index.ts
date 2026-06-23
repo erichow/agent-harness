@@ -162,3 +162,14 @@ export type { EvalCase, EvalResult, StabilityReport } from "./evals/case.js";
 export { BudgetEnforcer, BudgetExceeded } from "./cost/enforcer.js";
 export { ModelRouter } from "./cost/router.js";
 export type { ModelTier } from "./cost/router.js";
+
+/* ─── 第 21 章：可恢复与持久化 ────────────────────────────────────── */
+
+export { Checkpointer } from "./checkpoint/store.js";
+export type {
+  SessionRecord, CheckpointRecord, ToolCallRecord,
+  SessionStatus, ToolCallStatus,
+} from "./checkpoint/store.js";
+export { deserializeBlock, deserializeTranscript, serializeMessages } from "./checkpoint/serde.js";
+export { getPendingToolCalls } from "./checkpoint/resume.js";
+export type { PendingToolCall } from "./checkpoint/resume.js";

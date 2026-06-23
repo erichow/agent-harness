@@ -194,12 +194,3 @@ flowchart TB
 
 - **第 18 章（Observability）** per-agent 成本归因 + `gen_ai.usage.*` 属性为 BudgetEnforcer 提供 input 数据
 - **第 19 章（Evals）** eval suite 带着 router 跑，测每个 passing case 的成本——路由决策的数据依据
-
----
-
-## 参考
-
-- *$47K agent-loop 事故* (DEV Community, 2025.11) — 告警不是 enforcement，本章 BudgetEnforcer 回答它
-- *Anthropic cache TTL 静默回退事故* (GitHub anthropics/claude-code#46829, 2026.3) — 在生产里测 cache 命中率
-- *We switched to a 5× cheaper LLM and our costs went up* (Gitar, 2025) — 便宜模型可能总成本更贵
-- Anthropic prompt caching docs — 1024 token 最小是常被引的 gotcha
