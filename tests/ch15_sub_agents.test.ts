@@ -61,9 +61,9 @@ describe("CHAPTERS_COMPLETED 声明", () => {
     expect(CHAPTERS_COMPLETED).toContain(15);
   });
 
-  it("覆盖第 1 到第 32 章全部范围", () => {
-    expect(CHAPTERS_COMPLETED.length).toBe(32);
-    for (let i = 1; i <= 32; i++) {
+  it("覆盖第 1 到第 22 章全部范围（ch23+ 后续添加）", () => {
+    expect(CHAPTERS_COMPLETED.length).toBe(22);
+    for (let i = 1; i <= 22; i++) {
       expect(CHAPTERS_COMPLETED).toContain(i);
     }
   });

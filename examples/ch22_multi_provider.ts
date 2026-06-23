@@ -7,7 +7,8 @@
  * 运行：npx tsx examples/ch22_multi_provider.ts
  */
 
-import { MockProvider, ProviderResponse } from "../src/harness/providers/mock.js";
+import { MockProvider } from "../src/harness/providers/mock.js";
+import { ProviderResponse } from "../src/harness/providers/base.js";
 import { ToolRegistry, jsonQueryDefinition, jsonQueryHandler } from "../src/harness/tools/registry.js";
 import { arun } from "../src/harness/agent.js";
 import { Scratchpad } from "../src/harness/tools/scratchpad.js";
@@ -18,7 +19,11 @@ import { setupTracing } from "../src/harness/observability/tracing.js";
 import * as path from "node:path";
 import * as fs from "node:fs";
 
-setupTracing("multi-provider-demo");
+try {
+  setupTracing("multi-provider-demo");
+} catch {
+  // tracing 在 ESM 环境下依赖 require() 可能不可用
+}
 
 const TASK =
   "What is 2 + 2? Use the calculator tool to compute it. Then report the result.";
@@ -28,7 +33,7 @@ const TASK =
 function buildRegistry(): ToolRegistry {
   const registry = new ToolRegistry();
 
-  registry.register(jsonQueryDefinition(), jsonQueryHandler);
+  registry.register(jsonQueryDefinition, jsonQueryHandler);
   registry.register(...fileViewportTool());
   registry.register(...editLinesTool());
 

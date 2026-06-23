@@ -1,0 +1,377 @@
+$ npx vitest run --reporter=verbose 2>&1
+[exit 1]
+
+ RUN  v2.1.9 /Users/mac/Documents/harness/agent-harness
+
+ ✓ tests/ch14_permissions.test.ts > PermissionManager > allows when policy says allow
+ ✓ tests/ch14_permissions.test.ts > PermissionManager > denies when policy says deny
+ ✓ tests/ch14_permissions.test.ts > PermissionManager > ask upgrades to human decision (auto-allow)
+ ✓ tests/ch14_permissions.test.ts > PermissionManager > caches session- level approvals
+ ✓ tests/ch14_permissions.test.ts > PermissionManager > clearCache resets session approvals
+ ✓ tests/ch14_permissions.test.ts > policy functions > allowAll allows everything
+ ✓ tests/ch14_permissions.test.ts > policy functions > denyAll denies everything
+ ✓ tests/ch14_permissions.test.ts > policy functions > bySideEffect > allows read-only tools by default
+ ✓ tests/ch14_permissions.test.ts > policy functions > bySideEffect > asks for write by default
+ ✓ tests/ch14_permissions.test.ts > policy functions > bySideEffect > asks for network by default
+ ✓ tests/ch14_permissions.test.ts > policy functions > bySideEffect > denies mutate by default
+ ✓ tests/ch14_permissions.test.ts > policy functions > bySideEffect > uses strictest decision when multiple side effects
+ ✓ tests/ch14_permissions.test.ts > policy functions > bySideEffect > allows tools with no side effects
+ ✓ tests/ch14_permissions.test.ts > policy functions > pathAllowlist > allows paths under allowed directory
+ ✓ tests/ch14_permissions.test.ts > policy functions > pathAllowlist > denies paths outside allowed directory
+ ✓ tests/ch14_permissions.test.ts > policy functions > pathAllowlist > resolves path traversal before checking
+ ✓ tests/ch14_permissions.test.ts > policy functions > pathAllowlist > denies traversal attempts to /etc/passwd
+ ✓ tests/ch14_permissions.test.ts > policy functions > pathAllowlist > allows non-filesystem tools
+ ✓ tests/ch14_permissions.test.ts > policy functions > pathAllowlist > denies when no path argument
+ ✓ tests/ch14_permissions.test.ts > policy functions > compose > left-to-right, first non-allow wins
+ ✓ tests/ch14_permissions.test.ts > policy functions > compose > allows when all policies allow
+ ✓ tests/ch14_permissions.test.ts > wrapIfUntrusted > wraps network tool output in untrusted_content
+ ✓ tests/ch14_permissions.test.ts > wrapIfUntrusted > does not wrap non-network tool output
+ ✓ tests/ch14_permissions.test.ts > wrapIfUntrusted > wraps when tool has both read and network
+ ✓ tests/ch14_permissions.test.ts > Registry permission integration > executeAsync rejects permission denied tools
+ ✓ tests/ch14_permissions.test.ts > Registry permission integration > executeAsync allows permitted tools
+ ✓ tests/ch14_permissions.test.ts > Registry permission integration > executeAsync wraps MCP tool output with trust label
+ ✓ tests/ch14_permissions.test.ts > Registry permission integration > executeAsync does NOT wrap non-network tool output
+ ✓ tests/ch16_plans.test.ts > Plan data model > creates a plan with steps and postconditions
+ ✓ tests/ch16_plans.test.ts > Plan data model > starts with all steps pending
+ ✓ tests/ch16_plans.test.ts > Plan data model > isStepTerminal returns true for done and blocked
+ ✓ tests/ch16_plans.test.ts > Plan data model > allStepsTerminal returns true only when all are done or blocked
+ ✓ tests/ch16_plans.test.ts > Plan data model > allPostconditionsSatisfied returns true only when all satisfied
+ ✓ tests/ch16_plans.test.ts > Plan data model > isReadyToFinalize requires both allStepsTerminal and allPostconditionsSatisfied
+ ✓ tests/ch16_plans.test.ts > Plan data model > toRender produces human-readable output
+ ✓ tests/ch16_plans.test.ts > PlanHolder > starts with null plan
+ ✓ tests/ch16_plans.test.ts > PlanHolder > require throws when no plan
+ ✓ tests/ch16_plans.test.ts > PlanHolder > require returns plan when set
+ ✓ tests/ch16_plans.test.ts > Plan tools > plan_create creates a plan
+ ✓ tests/ch16_plans.test.ts > Plan tools > plan_create rejects empty objective
+ ✓ tests/ch16_plans.test.ts > Plan tools > plan_show returns current plan
+ ✓ tests/ch16_plans.test.ts > Plan tools > plan_show returns 'no active plan' when null
+ ✓ tests/ch16_plans.test.ts > Plan tools > step_update changes step status
+ ✓ tests/ch16_plans.test.ts > Plan tools > step_update requires evidence for done
+ ✓ tests/ch16_plans.test.ts > Plan tools > step_update rejects out of range
+ ✓ tests/ch16_plans.test.ts > Plan tools > postcondition_verify marks postcondition satisfied
+ ✓ tests/ch16_plans.test.ts > Plan tools > postcondition_verify requires evidence
+ ✓ tests/ch16_plans.test.ts > Plan tools > all 4 tools work through the registry
+ ✓ tests/ch16_plans.test.ts > Finalization edge cases > empty plan is not ready
+ ✓ tests/ch16_plans.test.ts > Finalization edge cases > blocked step with reason counts as terminal
+ ✓ tests/ch12_selector.test.ts > ToolCatalog > builds catalog from entries
+ ✓ tests/ch12_selector.test.ts > ToolCatalog > fromRegistry creates catalog from ToolRegistry
+ ✓ tests/ch12_selector.test.ts > ToolCatalog > get returns entry by name
+ ✓ tests/ch12_selector.test.ts > ToolCatalog > add inserts a new entry
+ ✓ tests/ch12_selector.test.ts > ToolCatalog > select returns relevant tools for query
+ ✓ tests/ch12_selector.test.ts > ToolCatalog > select respects k parameter
+ ✓ tests/ch12_selector.test.ts > ToolCatalog > select returns mustInclude tools regardless of score
+ ✓ tests/ch12_selector.test.ts > ToolCatalog > select returns only pinned tools when query matches nothing
+ ✓ tests/ch12_selector.test.ts > ToolCatalog > select sorts by relevance descending
+ ✓ tests/ch12_selector.test.ts > ToolCatalog > select returns empty when catalog is empty
+ ✓ tests/ch12_selector.test.ts > ToolCatalog > select returns pinned only for empty query
+ ✓ tests/ch12_selector.test.ts > ToolCatalog > BM25 ranks bash highly for shell queries
+ ✓ tests/ch12_selector.test.ts > ToolCatalog > selected entries execute correctly
+ ✓ tests/ch12_selector.test.ts > queryFromTranscript > extracts first user message
+ ✓ tests/ch12_selector.test.ts > queryFromTranscript > includes recent tool calls
+ ✓ tests/ch12_selector.test.ts > queryFromTranscript > returns empty string for empty transcript
+ ✓ tests/ch12_selector.test.ts > list_available_tools > returns all tools when no filter
+ ✓ tests/ch12_selector.test.ts > list_available_tools > filters by substring
+ ✓ tests/ch12_selector.test.ts > list_available_tools > returns no-matching message for bad filter
+ ✓ tests/ch12_selector.test.ts > backward compatibility > arun still accepts ToolRegistry (via type test)
+ ✓ tests/ch12_selector.test.ts > catalog integration > selected tools can be registered into ToolRegistry and execute
+ ✓ tests/ch12_selector.test.ts > catalog integration > full flow: catalog → select → arun-compatible
+ ✓ tests/ch12_selector.test.ts > tool cliff mitigation > select caps at 7 tools by default
+ ✓ tests/ch12_selector.test.ts > tool cliff mitigation > filters irrelevant tools from 30-tool catalog
+ ✓ tests/ch11_aci_tools.test.ts > readFileViewport > reads first 100 lines by default
+ ✓ tests/ch11_aci_tools.test.ts > readFileViewport > shows MORE below indicator when file exceeds limit
+ ✓ tests/ch11_aci_tools.test.ts > readFileViewport > uses custom offset
+ ✓ tests/ch11_aci_tools.test.ts > readFileViewport > shows both MORE indicators in the middle
+ ✓ tests/ch11_aci_tools.test.ts > readFileViewport > respects custom limit
+ ✓ tests/ch11_aci_tools.test.ts > readFileViewport > clamps limit to max 500
+ ✓ tests/ch11_aci_tools.test.ts > readFileViewport > clamps limit to minimum 1
+ ✓ tests/ch11_aci_tools.test.ts > readFileViewport > pads line numbers for alignment
+ ✓ tests/ch11_aci_tools.test.ts > readFileViewport > returns error for non-existent file
+ ✓ tests/ch11_aci_tools.test.ts > readFileViewport > returns error for directory
+ ✓ tests/ch11_aci_tools.test.ts > readFileViewport > returns error for empty path
+ ✓ tests/ch11_aci_tools.test.ts > readFileViewport > shows entire small file
+ ✓ tests/ch11_aci_tools.test.ts > readFileViewport > works through the registry
+ ✓ tests/ch11_aci_tools.test.ts > readFileViewport > can read its own source file
+ ✓ tests/ch11_aci_tools.test.ts > editLines > replaces a line range
+ ✓ tests/ch11_aci_tools.test.ts > editLines > deletes lines with empty replacement
+ ✓ tests/ch11_aci_tools.test.ts > editLines > inserts at position without removing
+ ✓ tests/ch11_aci_tools.test.ts > editLines > appends to end of file
+ ✓ tests/ch11_aci_tools.test.ts > editLines > rejects start_line out of range
+ ✓ tests/ch11_aci_tools.test.ts > editLines > rejects end_line before start_line - 1
+ ✓ tests/ch11_aci_tools.test.ts > editLines > includes context preview in result
+ ✓ tests/ch11_aci_tools.test.ts > editLines > returns error for non-existent file
+ ✓ tests/ch11_aci_tools.test.ts > editLines > returns error for empty path
+ ✓ tests/ch11_aci_tools.test.ts > editLines > works through the registry
+ ✓ tests/ch11_aci_tools.test.ts > editLines > preserves trailing newline of original file
+ ✓ tests/ch05_agent.test.ts > StreamEvent > builds TextDelta and guards it
+ ✓ tests/ch05_agent.test.ts > StreamEvent > builds ReasoningDelta
+ ✓ tests/ch05_agent.test.ts > StreamEvent > builds ToolCallStart and ToolCallDelta
+ ✓ tests/ch05_agent.test.ts > StreamEvent > builds Completed
+ ✓ tests/ch05_agent.test.ts > accumulate > accumulates plain text stream
+ ✓ tests/ch05_agent.test.ts > accumulate > accumulates single tool call
+ ✓ tests/ch05_agent.test.ts > accumulate > accumulates batch tool calls
+ ✓ tests/ch05_agent.test.ts > accumulate > handles orphan delta (no prior start)
+ ✓ tests/ch05_agent.test.ts > accumulate > handles JSON parse failure gracefully
+ ✓ tests/ch05_agent.test.ts > accumulate > accumulates text + reasoning
+ ✓ tests/ch05_agent.test.ts > arun (Chapter 5 — async) > returns final answer
+ ✓ tests/ch05_agent.test.ts > arun (Chapter 5 — async) > executes a tool and returns final answer
+ ✓ tests/ch05_agent.test.ts > arun (Chapter 5 — async) > executes batch tool calls
+ ✓ tests/ch05_agent.test.ts > arun (Chapter 5 — async) > returns error to model when tool is unknown (no crash)
+ ✓ tests/ch05_agent.test.ts > arun (Chapter 5 — async) > returns error to model when args fail validation
+ ✓ tests/ch05_agent.test.ts > arun (Chapter 5 — async) > calls onEvent for each StreamEvent
+ ✓ tests/ch05_agent.test.ts > arun (Chapter 5 — async) > throws if agent exceeds MAX_ITERATIONS
+ ✓ tests/ch05_agent.test.ts > arun (Chapter 5 — async) > handles system prompt
+ ✓ tests/ch05_agent.test.ts > retry utilities > backoffDelay returns increasing delays
+ ✓ tests/ch05_agent.test.ts > retry utilities > backoffDelay respects maxMs
+ ✓ tests/ch05_agent.test.ts > retry utilities > isRetryable returns true for 429 and 5xx
+ ✓ tests/ch05_agent.test.ts > retry utilities > isRetryable returns false for 4xx non-429
+ ✓ tests/ch05_agent.test.ts > retry utilities > withRetry succeeds on first try
+ ✓ tests/ch13_mcp.test.ts > MCPClient > connects to a mock MCP server and discovers tools
+ ✓ tests/ch10_retrieval.test.ts > DocumentIndex > builds index from a directory
+ ✓ tests/ch10_retrieval.test.ts > DocumentIndex > handles non-existent directory
+ ✓ tests/ch10_retrieval.test.ts > DocumentIndex > returns relevant results for keywords
+ ✓ tests/ch10_retrieval.test.ts > DocumentIndex > returns empty when nothing matches
+ ✓ tests/ch10_retrieval.test.ts > DocumentIndex > returns empty for empty query
+ ✓ tests/ch10_retrieval.test.ts > DocumentIndex > scores more relevant docs higher
+ ✓ tests/ch10_retrieval.test.ts > DocumentIndex > returns results sorted by score descending
+ ✓ tests/ch10_retrieval.test.ts > DocumentIndex > respects k parameter
+ ✓ tests/ch10_retrieval.test.ts > DocumentIndex > filters zero-score results
+ ✓ tests/ch10_retrieval.test.ts > DocumentIndex > finds content across multiple docs
+ ✓ tests/ch10_retrieval.test.ts > RetrievalInterface > search_docs returns structured results via registry
+ ✓ tests/ch10_retrieval.test.ts > RetrievalInterface > clamps k to max 10
+ ✓ tests/ch10_retrieval.test.ts > RetrievalInterface > returns no results for unmatched query
+ ✓ tests/ch10_retrieval.test.ts > RetrievalInterface > handles empty query gracefully
+ ✓ tests/ch10_retrieval.test.ts > RetrievalInterface > search_docs tool definition is correct
+ ✓ tests/ch10_retrieval.test.ts > self-test: index harness source > can index its own source and find relevant code
+ ✓ tests/ch13_mcp.test.ts > MCPClient > calls an MCP tool and gets the result
+ ✓ tests/ch13_mcp.test.ts > MCPClient > calls add tool with numbers
+ ✓ tests/ch13_mcp.test.ts > MCPClient > connects multiple servers simultaneously
+ ✓ tests/ch03_messages.test.ts > Block 工厂 > textBlock 创建文本块
+ ✓ tests/ch03_messages.test.ts > Block 工厂 > toolCallBlock 创建工具调用块
+ ✓ tests/ch03_messages.test.ts > Block 工厂 > toolResultBlock 创建工具结果块（默认 isError=false）
+ ✓ tests/ch03_messages.test.ts > Block 工厂 > toolResultBlock 支持 isError=true
+ ✓ tests/ch03_messages.test.ts > Block 工厂 > reasoningBlock 创建推理块
+ ✓ tests/ch03_messages.test.ts > Block 工厂 > reasoningBlock 接受自定义 metadata
+ ✓ tests/ch03_messages.test.ts > Message > 创建一个完整的 Message
+ ✓ tests/ch03_messages.test.ts > Message > 自动生成 id 和 createdAt
+ ✓ tests/ch03_messages.test.ts > Message > userText 工厂方法创建纯文本用户消息
+ ✓ tests/ch03_messages.test.ts > Message > assistantText 工厂方法创建助手文本消息
+ ✓ tests/ch03_messages.test.ts > Message > assistantText 支持附加推理块
+ ✓ tests/ch03_messages.test.ts > Message > assistantToolCall 工厂方法创建工具调用消息
+ ✓ tests/ch03_messages.test.ts > Message > assistantToolCall 支持附加推理块
+ ✓ tests/ch03_messages.test.ts > Message > toolResult 创建工具结果消息（role=user）
+ ✓ tests/ch03_messages.test.ts > Message.fromAssistantResponse > 从文本响应创建 assistant 消息
+ ✓ tests/ch03_messages.test.ts > Message.fromAssistantResponse > 从工具调用响应创建 assistant 消息
+ ✓ tests/ch03_messages.test.ts > Message.fromAssistantResponse > 从含推理文本的响应创建 assistant 消息
+ ✓ tests/ch03_messages.test.ts > Message.fromAssistantResponse > 从含推理文本的工具调用响应创建 assistant 消息
+ ✓ tests/ch03_messages.test.ts > Transcript > 创建空的 Transcript
+ ✓ tests/ch03_messages.test.ts > Transcript > 创建带 system prompt 的 Transcript
+ ✓ tests/ch03_messages.test.ts > Transcript > append 增加消息
+ ✓ tests/ch03_messages.test.ts > Transcript > extend 批量增加消息
+ ✓ tests/ch03_messages.test.ts > Transcript > last 返回最后一条消息
+ ✓ tests/ch03_messages.test.ts > Transcript > last 在空 Transcript 上返回 undefined
+ ✓ tests/ch03_messages.test.ts > Transcript > length 返回消息数量
+ ✓ tests/ch06_registry.test.ts > unknown tool with suggestion > suggests "calc" when "calculator" is called
+ ✓ tests/ch06_registry.test.ts > unknown tool with suggestion > no suggestion for completely unrelated name
+ ✓ tests/ch06_registry.test.ts > unknown tool with suggestion > no suggestion when registry is empty
+ ✓ tests/ch06_registry.test.ts > validation > returns error when required field is missing
+ ✓ tests/ch06_registry.test.ts > validation > returns error when field has wrong type
+ ✓ tests/ch06_registry.test.ts > validation > returns error for extra unknown properties
+ ✓ tests/ch06_registry.test.ts > validation > passes validation for valid args
+ ✓ tests/ch06_registry.test.ts > loop detection > detects 3 identical calls in a row
+ ✓ tests/ch06_registry.test.ts > loop detection > does not trigger for different arguments
+ ✓ tests/ch06_registry.test.ts > loop detection > does not trigger for different tools
+ ✓ tests/ch06_registry.test.ts > json_query tool > queries a simple object path
+ ✓ tests/ch06_registry.test.ts > json_query tool > queries an array index
+ ✓ tests/ch06_registry.test.ts > json_query tool > queries nested array and object
+ ✓ tests/ch06_registry.test.ts > json_query tool > returns error for invalid JSON
+ ✓ tests/ch06_registry.test.ts > json_query tool > returns error for non-existent key
+ ✓ tests/ch06_registry.test.ts > json_query tool > returns error for index out of range
+ ✓ tests/ch06_registry.test.ts > json_query tool > can be registered and executed through registry
+ ✓ tests/ch06_registry.test.ts > 4 gates integrated > gate 1: unknown tool → structured error
+ ✓ tests/ch06_registry.test.ts > 4 gates integrated > gate 2: bad args → validation error
+ ✓ tests/ch06_registry.test.ts > 4 gates integrated > gate 3: loop → loop detected
+ ✓ tests/ch06_registry.test.ts > 4 gates integrated > gate 4: handler exception → error result
+ ✓ tests/ch06_registry.test.ts > 4 gates integrated > all gates pass → successful execution
+ ✓ tests/ch07_accountant.test.ts > ContextBudget > uses defaults
+ ✓ tests/ch07_accountant.test.ts > ContextBudget > computes usable = windowSize - headroom
+ ✓ tests/ch07_accountant.test.ts > ContextBudget > custom thresholds
+ ✓ tests/ch07_accountant.test.ts > ContextSnapshot > totalUsed excludes headroom
+ ✓ tests/ch07_accountant.test.ts > ContextSnapshot > utilization = totalUsed / usable
+ ✓ tests/ch07_accountant.test.ts > ContextSnapshot > state is green when below yellow threshold
+ ✓ tests/ch07_accountant.test.ts > ContextSnapshot > state is yellow between thresholds
+ ✓ tests/ch07_accountant.test.ts > ContextSnapshot > state is red above red threshold
+ ✓ tests/ch07_accountant.test.ts > ContextSnapshot > utilization handles zero usable (defensive)
+ ✓ tests/ch07_accountant.test.ts > ContextAccountant — text counting > empty string counts as 0 tokens
+ ✓ tests/ch07_accountant.test.ts > ContextAccountant — text counting > counts longer text as more tokens
+ ✓ tests/ch07_accountant.test.ts > ContextAccountant — message counting > counts messages in transcript history
+ ✓ tests/ch07_accountant.test.ts > ContextAccountant — message counting > counts tool call and tool result blocks
+ ✓ tests/ch07_accountant.test.ts > ContextAccountant — snapshot > returns all 5 components in totals
+ ✓ tests/ch07_accountant.test.ts > ContextAccountant — snapshot > snapshot changes as transcript grows
+ ✓ tests/ch07_accountant.test.ts > agent integration with ContextAccountant > onSnapshot is called each iteration
+ ✓ tests/ch07_accountant.test.ts > agent integration with ContextAccountant > onSnapshot fires each turn in multi-turn
+ ✓ tests/ch07_accountant.test.ts > agent integration with ContextAccountant > custom accountant is used
+stderr | tests/ch08_compactor.test.ts > Compactor > applies masking when in red
+[compactor] compaction could not bring transcript under red threshold (masked=8652, summarized=13 turns, final=0.0%)
+
+stderr | tests/ch08_compactor.test.ts > agent integration with Compactor > onCompaction fires when red state triggers
+[compactor] compaction could not bring transcript under red threshold (masked=0, summarized=0 turns, final=0.6%)
+[compactor] compaction could not bring transcript under red threshold (masked=0, summarized=0 turns, final=0.7%)
+
+ ✓ tests/ch08_compactor.test.ts > maskOlderResults > does nothing when count <= keepRecent
+ ✓ tests/ch08_compactor.test.ts > maskOlderResults > masks older results, keeps recent ones
+ ✓ tests/ch08_compactor.test.ts > maskOlderResults > is idempotent — second call frees 0
+ ✓ tests/ch08_compactor.test.ts > maskOlderResults > masks nothing when there are no tool results
+ ✓ tests/ch08_compactor.test.ts > maskOlderResults > preserves callId and isError in masked result
+ ✓ tests/ch08_compactor.test.ts > summarizePrefix > returns null when not enough messages
+ ✓ tests/ch08_compactor.test.ts > summarizePrefix > replaces prefix with a summary message
+ ✓ tests/ch08_compactor.test.ts > Compactor > does nothing when state is green
+ ✓ tests/ch08_compactor.test.ts > Compactor > applies masking when in red
+ ✓ tests/ch08_compactor.test.ts > agent integration with Compactor > onCompaction fires when red state triggers
+ ✓ tests/ch08_compactor.test.ts > agent integration with Compactor > compactor defaults do not break normal flow
+ ✓ tests/ch13_mcp.test.ts > MCPClient > close cleans up all connections
+ ✓ tests/ch04_agent.test.ts > ToolRegistry > registers and retrieves a tool definition
+ ✓ tests/ch04_agent.test.ts > ToolRegistry > getSchemas returns schemas in registration order
+ ✓ tests/ch04_agent.test.ts > ToolRegistry > execute returns result for valid call
+ ✓ tests/ch04_agent.test.ts > ToolRegistry > execute returns error for unknown tool
+ ✓ tests/ch04_agent.test.ts > ToolRegistry > execute returns error when required field is missing
+ ✓ tests/ch04_agent.test.ts > ToolRegistry > execute catches handler exceptions
+ ✓ tests/ch04_agent.test.ts > ToolRegistry > list returns all tool names
+ ✓ tests/ch04_agent.test.ts > ToolRegistry > throws on duplicate registration
+ ✓ tests/ch04_agent.test.ts > agent loop (Chapter 4 — ToolRegistry) > returns final answer
+ ✓ tests/ch04_agent.test.ts > agent loop (Chapter 4 — ToolRegistry) > executes a tool and returns final answer
+ ✓ tests/ch04_agent.test.ts > agent loop (Chapter 4 — ToolRegistry) > returns error to model when tool is unknown (no crash)
+ ✓ tests/ch04_agent.test.ts > agent loop (Chapter 4 — ToolRegistry) > returns error to model when args fail validation
+ ✓ tests/ch04_agent.test.ts > agent loop (Chapter 4 — ToolRegistry) > returns error to model when tool throws
+ ✓ tests/ch04_agent.test.ts > agent loop (Chapter 4 — ToolRegistry) > throws if agent exceeds MAX_ITERATIONS
+ ✓ tests/ch04_agent.test.ts > agent loop (Chapter 4 — ToolRegistry) > handles system prompt
+ ✓ tests/ch13_mcp.test.ts > wrapMcpTools > converts MCP tools to CatalogEntry array
+ ✓ tests/ch13_mcp.test.ts > wrapMcpTools > wrapped tools can be registered in ToolRegistry and executed async
+ ✓ tests/ch13_mcp.test.ts > ToolRegistry async > aregister stores an async handler
+ ✓ tests/ch13_mcp.test.ts > ToolRegistry async > executeAsync calls async handler
+ ✓ tests/ch13_mcp.test.ts > ToolRegistry async > executeAsync falls back to sync handler when no async handler
+ ✓ tests/ch13_mcp.test.ts > ToolRegistry async > executeAsync validates args before executing
+ ✓ tests/ch13_mcp.test.ts > ToolRegistry async > executeAsync detects unknown tools
+ ✓ tests/ch13_mcp.test.ts > ToolRegistry async > executeAsync detects tool call loops
+ ✓ tests/ch13_mcp.test.ts > MCPTool structure > has required fields
+stderr | tests/ch20_cost.test.ts > BudgetEnforcer > throws BudgetExceeded when spent exceeds max
+[BUDGET] $0.01 / $0.01 (50% reached)
+[BUDGET] $0.01 / $0.01 (80% reached)
+
+stderr | tests/ch20_cost.test.ts > BudgetEnforcer > throws with correct spent and max values
+[BUDGET] $0.01 / $0.01 (50% reached)
+[BUDGET] $0.01 / $0.01 (80% reached)
+
+ ✓ tests/ch20_cost.test.ts > BudgetEnforcer > accumulates costs from record()
+ ✓ tests/ch20_cost.test.ts > BudgetEnforcer > fires alert thresholds
+ ✓ tests/ch20_cost.test.ts > BudgetEnforcer > throws BudgetExceeded when spent exceeds max
+ ✓ tests/ch20_cost.test.ts > BudgetEnforcer > throws with correct spent and max values
+ ✓ tests/ch20_cost.test.ts > BudgetEnforcer > reports remaining budget
+ ✓ tests/ch20_cost.test.ts > ModelRouter > routes classify/extract/summarize to economy
+ ✓ tests/ch20_cost.test.ts > ModelRouter > routes code/plan/reason to premium
+ ✓ tests/ch20_cost.test.ts > ModelRouter > defaults to mid for unknown tasks
+ ✓ tests/ch20_cost.test.ts > ModelRouter > routes long context to premium
+ ✓ tests/ch20_cost.test.ts > ModelRouter > chooseTier returns correct tier name
+ ✓ tests/ch21_checkpoint.test.ts > Checkpointer > creates a new session
+ ✓ tests/ch21_checkpoint.test.ts > Checkpointer > saves and loads checkpoints with versioning
+ ✓ tests/ch21_checkpoint.test.ts > Checkpointer > tracks tool call lifecycle
+ ✓ tests/ch21_checkpoint.test.ts > Checkpointer > deduplicates by idempotency key
+ ✓ tests/ch21_checkpoint.test.ts > Checkpointer > returns null for non-existent checkpoint
+ ✓ tests/ch21_checkpoint.test.ts > Checkpointer > updates session status
+ ✓ tests/ch21_checkpoint.test.ts > Checkpointer > persists to disk between new instances
+ ✓ tests/ch21_checkpoint.test.ts > serde > deserializes text block by kind
+ ✓ tests/ch21_checkpoint.test.ts > serde > deserializes tool_call block by kind
+ ✓ tests/ch21_checkpoint.test.ts > serde > deserializes tool_result block with snake_case fallback
+ ✓ tests/ch21_checkpoint.test.ts > serde > throws on unknown kind
+ ✓ tests/ch21_checkpoint.test.ts > serializeMessages > adds createdAt if missing
+ ✓ tests/ch21_checkpoint.test.ts > resume > getPendingToolCalls returns issued calls
+ ✓ tests/ch21_checkpoint.test.ts > resume > does not return completed calls as pending
+ ✓ tests/ch02_agent.test.ts > Provider 协议 > Provider 接口定义了 complete 和 astream 方法
+ ✓ tests/ch02_agent.test.ts > Provider 协议 > MockProvider 按顺序返回预设响应
+ ✓ tests/ch02_agent.test.ts > Provider 协议 > MockProvider 用完预设响应后抛异常
+ ✓ tests/ch02_agent.test.ts > ProviderResponse > 纯文本响应的 isFinal 为 true
+ ✓ tests/ch02_agent.test.ts > ProviderResponse > 工具调用响应的 isToolCall 为 true、isFinal 为 false
+ ✓ tests/ch02_agent.test.ts > ProviderResponse > 支持批量工具调用
+ ✓ tests/ch02_agent.test.ts > ProviderResponse > 同时有文本和工具调用时 isToolCall 为 true
+ ✓ tests/ch02_agent.test.ts > ProviderResponse > 记录 token 计数
+ ✓ tests/ch02_agent.test.ts > ProviderResponse > 向后兼容：单数访问器返回第一个工具调用
+ ✓ tests/ch02_agent.test.ts > MockProvider 流式模式 > astream 从流式预设生成事件
+ ✓ tests/ch02_agent.test.ts > MockProvider 流式模式 > astream 从预设响应自动生成流式事件
+ ✓ tests/ch02_agent.test.ts > MockProvider 流式模式 > reset 后可以重新使用 MockProvider
+ ✓ tests/ch02_agent.test.ts > Agent 循环契约 > 循环在 isFinal=true 时终止
+ ✓ tests/ch02_agent.test.ts > Agent 循环契约 > 循环在工具调用后继续
+ ✓ tests/ch02_agent.test.ts > Agent 循环契约 > MAX_ITERATIONS 常量已定义
+ ✓ tests/ch02_agent.test.ts > Agent 循环契约 > 空文本响应也能正常结束
+ ✓ tests/ch19_evals.test.ts > EvalRunner > passes a case where checkAnswer matches
+ ✓ tests/ch19_evals.test.ts > EvalRunner > fails when checkAnswer returns false
+ ✓ tests/ch19_evals.test.ts > EvalRunner > handles arun crash as failure
+ ✓ tests/ch19_evals.test.ts > checkAnswer > passes with matching content
+ ✓ tests/ch19_evals.test.ts > checkAnswer > fails with missing content
+ ✓ tests/ch19_evals.test.ts > caseFromTrace > creates EvalCase from trace summary
+ ✓ tests/ch19_evals.test.ts > caseFromTrace > handles missing failure reason
+ ✓ tests/ch19_evals.test.ts > caseFromTrace > enforces minimum maxTokens of 1000
+ ✓ tests/ch09_scratchpad.test.ts > Scratchpad > writes and reads a value
+ ✓ tests/ch09_scratchpad.test.ts > Scratchpad > overwrites existing key
+ ✓ tests/ch09_scratchpad.test.ts > Scratchpad > reads back written content exactly
+ ✓ tests/ch09_scratchpad.test.ts > Scratchpad > rejects key with slashes
+ ✓ tests/ch09_scratchpad.test.ts > Scratchpad > rejects key with dots
+ ✓ tests/ch09_scratchpad.test.ts > Scratchpad > rejects empty key
+ ✓ tests/ch09_scratchpad.test.ts > Scratchpad > accepts alphanumeric, dash, underscore
+ ✓ tests/ch09_scratchpad.test.ts > Scratchpad > lists all keys sorted
+ ✓ tests/ch09_scratchpad.test.ts > Scratchpad > returns empty list for empty scratchpad
+ ✓ tests/ch09_scratchpad.test.ts > Scratchpad > throws on reading non-existent key
+ ✓ tests/ch09_scratchpad.test.ts > Scratchpad > asTools > returns 3 tools
+ ✓ tests/ch09_scratchpad.test.ts > Scratchpad > asTools > all 3 tools work through the registry
+ ✓ tests/ch27_files.test.ts > ch27: Extended filesystem tools > create_file > creates a new file
+ ✓ tests/ch27_files.test.ts > ch27: Extended filesystem tools > create_file > refuses to overwrite
+ ✓ tests/ch27_files.test.ts > ch27: Extended filesystem tools > delete_file > deletes a file
+ ✓ tests/ch27_files.test.ts > ch27: Extended filesystem tools > delete_file > reports missing file
+ ✓ tests/ch27_files.test.ts > ch27: Extended filesystem tools > list_directory > lists contents
+ ✓ tests/ch27_files.test.ts > ch27: Extended filesystem tools > list_directory > reports nonexistent dir
+ ✓ tests/ch27_files.test.ts > ch27: Extended filesystem tools > glob_files > finds .ts files
+ ✓ tests/ch27_files.test.ts > ch27: Extended filesystem tools > glob_files > returns 'no files' for impossible pattern
+ ✓ tests/ch27_files.test.ts > ch27: Extended filesystem tools > get_file_info > returns metadata
+ ✓ tests/ch27_files.test.ts > ch27: Extended filesystem tools > get_file_info > reports missing file
+ ✓ tests/ch27_files.test.ts > ch27: Extended filesystem tools > search_in_files > finds text
+ ✓ tests/ch27_files.test.ts > ch27: Extended filesystem tools > search_in_files > returns 'no matches' for absent pattern
+ ✓ tests/ch30_ui.test.ts > ch30: UI interaction tools > confirm_action > returns confirmed when user confirms
+ ✓ tests/ch30_ui.test.ts > ch30: UI interaction tools > confirm_action > returns cancelled when user declines
+ ✓ tests/ch30_ui.test.ts > ch30: UI interaction tools > confirm_action > shows details when provided
+ ✓ tests/ch30_ui.test.ts > ch30: UI interaction tools > ask_choice > returns selected option
+ ✓ tests/ch30_ui.test.ts > ch30: UI interaction tools > ask_choice > rejects more than 6 options
+ ✓ tests/ch30_ui.test.ts > ch30: UI interaction tools > ask_input > returns user input
+ ✓ tests/ch30_ui.test.ts > ch30: UI interaction tools > ask_input > returns default when no input
+ ✓ tests/ch30_ui.test.ts > ch30: UI interaction tools > show_progress > displays progress bar
+ ✓ tests/ch30_ui.test.ts > ch30: UI interaction tools > show_progress > handles zero max gracefully
+ ✓ tests/ch30_ui.test.ts > ch30: UI interaction tools > show_diff > shows diff preview
+ ✓ tests/ch30_ui.test.ts > ch30: UI interaction tools > show_diff > truncates long diffs
+ ✓ tests/ch28_config.test.ts > ch28: Configuration system > validateConfig > accepts valid config
+ ✓ tests/ch28_config.test.ts > ch28: Configuration system > validateConfig > rejects invalid maxIterations
+ ✓ tests/ch28_config.test.ts > ch28: Configuration system > validateConfig > rejects unknown provider type
+ ✓ tests/ch28_config.test.ts > ch28: Configuration system > loadConfig > loads default config with no sources
+ ✓ tests/ch28_config.test.ts > ch28: Configuration system > loadConfig > merges object sources over defaults
+ ✓ tests/ch28_config.test.ts > ch28: Configuration system > loadConfig > deep merges nested objects
+ ✓ tests/ch28_config.test.ts > ch28: Configuration system > formatConfig > returns a formatted string
+ ✓ tests/ch28_config.test.ts > ch28: Configuration system > createAgentFromConfig > returns runtime with config
+ ✓ tests/ch24_terminal.test.ts > ch24: Terminal tools > which_command > finds node
+ ✓ tests/ch24_terminal.test.ts > ch24: Terminal tools > which_command > finds git
+ ✓ tests/ch24_terminal.test.ts > ch24: Terminal tools > which_command > reports not found for nonexistent command
+ ✓ tests/ch24_terminal.test.ts > ch24: Terminal tools > run_command > runs a simple command and returns output
+ ✓ tests/ch24_terminal.test.ts > ch24: Terminal tools > run_command > reports command completed with no output for silent commands
+ ✓ tests/ch24_terminal.test.ts > ch24: Terminal tools > run_command > reports failure for failing commands
+ ✓ tests/ch24_terminal.test.ts > ch24: Terminal tools > run_command > blocks dangerous commands
+ ✓ tests/ch24_terminal.test.ts > ch24: Terminal tools > run_command > blocks fork bombs
+ ✓ tests/ch24_terminal.test.ts > ch24: Terminal tools > run_command > warns on sudo commands
+ ✓ tests/ch24_terminal.test.ts > ch24: Terminal tools > run_command_async > starts a background job and returns a job ID
+ ✓ tests/ch24_terminal.test.ts > ch24: Terminal tools > run_command_async > blocks dangerous async commands
+ ✓ tests/ch24_terminal.test.ts > ch24: Terminal tools > get_job_output > reports unknown job
+ ✓ tests/ch24_terminal.test.ts > ch24: Terminal tools > stop_job > reports unknown job
+ ✓ tests/ch18_observability.test.ts > SessionContext > returns null when no context is set
+ ✓ tests/ch18_observability.test.ts > SessionContext > returns the context set by runWithContext
+ ✓ tests/ch18_observability.test.ts > SessionContext > restores previous context after runWithContext exits
+ ✓ tests/ch18_observability.test.ts > subagentContext > inherits sessionId and taskId, changes agentId
+ ✓ tests/ch18_observability.test.ts > subagentContext > does not mutate the parent context
+ ✓ tests/ch18_observability.test.ts > span() > executes the callback and returns its value
+ ✓ tests/ch18_observability.test.ts > span() > propagates exceptions from the callback
+ ✓ test
+
+[… truncated 8835 chars …]
