@@ -156,3 +156,9 @@ export { caseFromTrace } from "./evals/from_trace.js";
 export type { TraceSummary } from "./evals/from_trace.js";
 export { runStability } from "./evals/stability.js";
 export type { EvalCase, EvalResult, StabilityReport } from "./evals/case.js";
+
+/* ─── 第 20 章：成本控制 ─────────────────────────────────────────── */
+
+export { BudgetEnforcer, BudgetExceeded } from "./cost/enforcer.js";
+export { ModelRouter } from "./cost/router.js";
+export type { ModelTier } from "./cost/router.js";
