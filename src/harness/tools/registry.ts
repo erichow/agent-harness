@@ -345,6 +345,24 @@ export class ToolRegistry {
     if (name === "search_docs") {
       return ["read"];
     }
+    // 第 23 章：git 工具
+    if (name.startsWith("git_status") || name.startsWith("git_diff") || name.startsWith("git_log")) {
+      return ["read"];
+    }
+    if (name.startsWith("git_")) {
+      return ["write"];
+    }
+    // 第 24 章：终端工具
+    if (name === "which_command" || name === "get_job_output") {
+      return ["read"];
+    }
+    if (name.startsWith("run_command") || name === "stop_job") {
+      return ["mutate"];
+    }
+    // 第 25 章：LSP 工具（全部只读）
+    if (name.startsWith("lsp_")) {
+      return ["read"];
+    }
     return [];
   }
 

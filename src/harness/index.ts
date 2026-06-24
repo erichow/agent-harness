@@ -54,17 +54,33 @@
  *   - Plan / Step / Postcondition / StepStatus — 结构化计划数据模型
  *   - PlanHolder — Plan 持有者
  *   - createPlanTools — 4 个 plan 操作工具
+ *
+ * 第 23 章新增导出：
+ *   - createGitTools — 8 个结构化 git 版本控制工具
+ *
+ * 第 24 章新增导出：
+ *   - createTerminalTools — 终端执行工具（run_command + 异步 + which）
+ *
+ * 第 25 章新增导出：
+ *   - LSPManager — LSP 语言服务器管理器
+ *   - createLSPTools — 6 个 LSP 代码智能工具
+ *
+ * 第 26 章新增导出：
+ *   - createCodeAnalysisTools — 5 个代码分析工具（AST 解析、依赖分析、复杂度、模式搜索、安全扫描）
+ *
+ * 第 27 章新增导出：
+ *   - createExtendedFilesystemTools — 6 个扩展文件系统工具（创建、删除、浏览、搜索、元信息）
  */
 
 export const VERSION = "0.1.0";
 
 /* ─── 已实现章节清单 ─────────────────────────────────────────── */
 
-/** 当前已实现的章节编号列表（ch01–ch22） */
+/** 当前已实现的章节编号列表（ch01–ch27） */
 export const CHAPTERS_COMPLETED: readonly number[] = [
   1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
   11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-  21, 22,
+  21, 22, 23, 24, 25, 26, 27,
 ] as const;
 
 export { run, arun, MAX_ITERATIONS } from "./agent.js";
@@ -98,6 +114,31 @@ export { allowAll, denyAll, bySideEffect, pathAllowlist, compose } from "./permi
 export type { Policy } from "./permissions/policy.js";
 export { wrapIfUntrusted } from "./permissions/trust.js";
 export { defaultCliPrompt, autoAllowPrompt } from "./permissions/manager.js";
+
+/* ─── 第 23 章：Git 版本控制工具 ──────────────────────────────────── */
+
+export { createGitTools } from "./tools/git.js";
+
+/* ─── 第 24 章：终端执行 ─────────────────────────────────────────── */
+
+export { createTerminalTools } from "./tools/terminal.js";
+
+/* ─── 第 25 章：LSP 语言服务器协议集成 ─────────────────────────── */
+
+export { LSPManager, MockLSPManager, LspError, createLSPTools } from "./tools/lsp.js";
+export type {
+  LspPosition, LspLocation, LspRange,
+  LspHoverResult, LspCompletionItem, LspSignatureInfo, LspDiagnosticItem,
+} from "./tools/lsp.js";
+
+/* ─── 第 26 章：代码分析工具 ──────────────────────────────────── */
+
+export { createCodeAnalysisTools } from "./tools/code_analysis.js";
+
+/* ─── 第 27 章：扩展文件系统工具 ──────────────────────────────────── */
+
+export { createExtendedFilesystemTools } from "./tools/extended_filesystem.js";
+
 export { Plan, createStep, createPostcondition, isStepTerminal, StepStatus } from "./plans/model.js";
 export type { Step, Postcondition } from "./plans/model.js";
 export { PlanHolder, createPlanTools } from "./plans/tools.js";
