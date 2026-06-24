@@ -196,7 +196,7 @@ describe("toProviderResponse", () => {
       id: "r1",
       object: "chat.completion",
       created: 100,
-      model: "deepseek-chat",
+      model: "deepseek-v4-flash",
       choices: [{ ...baseChoice, message: { role: "assistant", content: "Hello!", refusal: null } }],
       usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
     });
@@ -212,7 +212,7 @@ describe("toProviderResponse", () => {
       id: "r2",
       object: "chat.completion",
       created: 101,
-      model: "deepseek-chat",
+      model: "deepseek-v4-flash",
       choices: [{
         ...baseChoice,
         message: {
@@ -240,7 +240,7 @@ describe("toProviderResponse", () => {
       id: "r3",
       object: "chat.completion",
       created: 102,
-      model: "deepseek-chat",
+      model: "deepseek-v4-flash",
       choices: [{
         ...baseChoice,
         message: {
@@ -265,7 +265,7 @@ describe("toProviderResponse", () => {
       id: "r4",
       object: "chat.completion",
       created: 103,
-      model: "deepseek-chat",
+      model: "deepseek-v4-flash",
       choices: [{
         ...baseChoice,
         message: {
@@ -287,7 +287,7 @@ describe("toProviderResponse", () => {
       id: "r5",
       object: "chat.completion",
       created: 104,
-      model: "deepseek-chat",
+      model: "deepseek-v4-flash",
       choices: [],
     });
 
@@ -301,7 +301,7 @@ describe("toProviderResponse", () => {
       id: "r6",
       object: "chat.completion",
       created: 105,
-      model: "deepseek-chat",
+      model: "deepseek-v4-flash",
       choices: [{
         ...baseChoice,
         message: {
@@ -331,7 +331,7 @@ describe("astream（mock）", () => {
         id: "chunk-1",
         object: "chat.completion.chunk",
         created: 100,
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         choices: [{
           index: 0,
           delta: { content: "Hello" },
@@ -342,7 +342,7 @@ describe("astream（mock）", () => {
         id: "chunk-2",
         object: "chat.completion.chunk",
         created: 100,
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         choices: [{
           index: 0,
           delta: { content: " world!" },
@@ -354,7 +354,7 @@ describe("astream（mock）", () => {
         id: "chunk-3",
         object: "chat.completion.chunk",
         created: 100,
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         choices: [],
         usage: { prompt_tokens: 5, completion_tokens: 8, total_tokens: 13 },
       };
@@ -394,7 +394,7 @@ describe("astream（mock）", () => {
         id: "c1",
         object: "chat.completion.chunk",
         created: 100,
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         choices: [{
           index: 0,
           delta: { tool_calls: [{ index: 0, id: "tc-1", function: { name: "calc", arguments: "" } }] },
@@ -405,7 +405,7 @@ describe("astream（mock）", () => {
         id: "c2",
         object: "chat.completion.chunk",
         created: 100,
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         choices: [{
           index: 0,
           delta: { tool_calls: [{ index: 0, function: { arguments: '{"expression":' } }] },
@@ -416,7 +416,7 @@ describe("astream（mock）", () => {
         id: "c3",
         object: "chat.completion.chunk",
         created: 100,
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         choices: [{
           index: 0,
           delta: { tool_calls: [{ index: 0, function: { arguments: '"2+2"}' } }] },
@@ -458,7 +458,7 @@ describe("astream（mock）", () => {
         id: "r1",
         object: "chat.completion.chunk",
         created: 100,
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         choices: [{
           index: 0,
           delta: { content: "", reasoning_content: "Let me think..." },
@@ -469,7 +469,7 @@ describe("astream（mock）", () => {
         id: "r2",
         object: "chat.completion.chunk",
         created: 100,
-        model: "deepseek-chat",
+        model: "deepseek-v4-flash",
         choices: [{
           index: 0,
           delta: { content: "Answer: 4" },
