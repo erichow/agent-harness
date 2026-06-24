@@ -88,7 +88,7 @@ function parseToAst(filePath: string): {
   const ext = path.extname(filePath).toLowerCase();
   const isModule = ext === ".mjs" || ext === ".mts" || content.includes("import ") || content.includes("export ");
 
-  const plugins: string[] = ["decorators"];
+  const plugins = ["decorators"] as string[];
   if (ext === ".ts" || ext === ".tsx" || ext === ".mts" || ext === ".cts") {
     plugins.push("typescript");
   }
@@ -98,7 +98,7 @@ function parseToAst(filePath: string): {
 
   const ast = parser.parse(content, {
     sourceType: isModule ? "module" : "script",
-    plugins,
+    plugins: plugins as any,
     attachComment: true,
   });
 
@@ -433,7 +433,7 @@ function extractExports(ast: AstNode): string[] {
       const specifiers = stmt.specifiers as AstNode[] | undefined;
       if (specifiers) {
         for (const s of specifiers) {
-          const name = (s.exported as AstNode)?.name ?? "";
+          const name = String((s.exported as Record<string, unknown>)?.name ?? "");
           if (name) exports.push(name);
         }
       }

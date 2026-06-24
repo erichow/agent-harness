@@ -81,13 +81,13 @@ describe("ch24: Terminal exec tools", () => {
   it("rejects cwd outside project root", async () => {
     const tool = tools.find(t => t.definition.name === "run_command")!;
     const result = await tool.asyncHandler!({ command: "echo test", cwd: "../../etc" });
-    expect(result).toContain("outside") || expect(result).toContain("Error");
+    expect(result).toMatch(/outside|Error/i);
   });
 
   it("times out on long-running commands", async () => {
     const tool = tools.find(t => t.definition.name === "run_command")!;
     const result = await tool.asyncHandler!({ command: "sleep 10", timeoutSec: 1 });
-    expect(result).toContain("timed out") || expect(result).toContain("killed");
+    expect(result).toMatch(/timed out|killed/i);
   });
 
   it("outputs warnings for WARN_PATTERNS", async () => {
@@ -95,7 +95,7 @@ describe("ch24: Terminal exec tools", () => {
     const result = await tool.asyncHandler!({ command: "echo test | sudo ls" });
     // 应该包含 sudo 警告（即使命令本身因为 pipe 可能出错）
     // 重点是验证 warn 机制触发
-    expect(result).toContain("warn") || expect(result).toContain("sudo");
+    expect(result).toMatch(/warn|sudo/i);
   });
 
   /* ─── which_command ──────────────────────────────────────────── */

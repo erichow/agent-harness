@@ -94,8 +94,8 @@ describe("run_sub_agent 工具模式", () => {
       },
     } as const;
 
-    const handler = (args: { task: string; tools?: string[] }) => {
-      return `[sub-agent completed: ${args.task}]`;
+    const handler = (args: Record<string, unknown>) => {
+      return `[sub-agent completed: ${args.task as string}]`;
     };
 
     registry.register(runSubAgentDef, handler);
@@ -119,9 +119,10 @@ describe("run_sub_agent 工具模式", () => {
       },
     } as const;
 
-    registry.register(runSubAgentDef, (args) => {
-      const toolMsg = args.tools ? ` (tools: ${args.tools.join(", ")})` : " (all tools)";
-      return `[sub-agent: ${args.task}${toolMsg}]`;
+    registry.register(runSubAgentDef, (args: Record<string, unknown>) => {
+      const tools = args.tools as string[] | undefined;
+      const toolMsg = tools ? ` (tools: ${tools.join(", ")})` : " (all tools)";
+      return `[sub-agent: ${args.task as string}${toolMsg}]`;
     });
 
     const limited = registry.execute(

@@ -197,7 +197,7 @@ describe("toProviderResponse", () => {
       object: "chat.completion",
       created: 100,
       model: "deepseek-chat",
-      choices: [{ ...baseChoice, message: { role: "assistant", content: "Hello!" } }],
+      choices: [{ ...baseChoice, message: { role: "assistant", content: "Hello!", refusal: null } }],
       usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
     });
 
@@ -218,6 +218,7 @@ describe("toProviderResponse", () => {
         message: {
           role: "assistant",
           content: null,
+          refusal: null,
           tool_calls: [{
             id: "call-1",
             type: "function",
@@ -245,6 +246,7 @@ describe("toProviderResponse", () => {
         message: {
           role: "assistant",
           content: null,
+          refusal: null,
           tool_calls: [
             { id: "c1", type: "function", function: { name: "calc", arguments: '{"a":1,"b":2}' } },
             { id: "c2", type: "function", function: { name: "echo", arguments: '{"msg":"hi"}' } },
@@ -269,9 +271,10 @@ describe("toProviderResponse", () => {
         message: {
           role: "assistant",
           content: "Final answer",
+          refusal: null,
           // DeepSeek 在 message 层面附加 reasoning_content
           reasoning_content: "Let me think...",
-        } as Record<string, unknown>,
+        } as any,
       }],
     });
 
@@ -304,6 +307,7 @@ describe("toProviderResponse", () => {
         message: {
           role: "assistant",
           content: null,
+          refusal: null,
           tool_calls: [{
             id: "c1",
             type: "function",

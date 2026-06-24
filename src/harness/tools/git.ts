@@ -500,10 +500,11 @@ export function createGitTools(cwd?: string): CatalogEntry[] {
           ? await git.push(remote, branch)
           : await git.push(remote);
 
+        const pushSummary = (pushResult as any)?.summary;
         return [
           `pushed to ${remote}${branch ? `/${branch}` : ""}`,
-          pushResult?.summary?.changes
-            ? `changes: ${pushResult.summary.changes}`
+          pushSummary?.changes
+            ? `changes: ${pushSummary.changes}`
             : "(no output from push)",
           `[git_push: completed]`,
         ].join("\n");

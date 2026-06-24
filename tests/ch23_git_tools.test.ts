@@ -326,7 +326,7 @@ describe("ch23: Git tools", () => {
     await createInitialCommit();
     const tool = tools.find(t => t.definition.name === "git_push")!;
     const result = await tool.asyncHandler!({});
-    expect(result).toContain("error") || expect(result).toContain("Error");
+    expect(result).toMatch(/error|Error/i);
   });
 
   it("git_pull fails without remote", async () => {
@@ -334,6 +334,6 @@ describe("ch23: Git tools", () => {
     const tool = tools.find(t => t.definition.name === "git_pull")!;
     const result = await tool.asyncHandler!({});
     // 无 remote 的 pull 会报错
-    expect(result).toContain("error") || expect(result).toContain("Error");
+    expect(result).toMatch(/error|Error/i);
   });
 });

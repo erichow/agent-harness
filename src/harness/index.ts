@@ -76,11 +76,11 @@ export const VERSION = "0.1.0";
 
 /* ─── 已实现章节清单 ─────────────────────────────────────────── */
 
-/** 当前已实现的章节编号列表（ch01–ch27） */
+/** 当前已实现的章节编号列表（ch01–ch30） */
 export const CHAPTERS_COMPLETED: readonly number[] = [
   1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
   11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-  21, 22, 23, 24, 25, 26, 27,
+  21, 22, 23, 24, 25, 26, 27, 28, 29, 30,
 ] as const;
 
 export { run, arun, MAX_ITERATIONS } from "./agent.js";
@@ -225,3 +225,8 @@ export type {
 export { deserializeBlock, deserializeTranscript, serializeMessages } from "./checkpoint/serde.js";
 export { getPendingToolCalls } from "./checkpoint/resume.js";
 export type { PendingToolCall } from "./checkpoint/resume.js";
+
+/* ─── 第 30 章：UI 交互工具 ──────────────────────────────────────── */
+
+export { createUITools, NoopUIProvider } from "./tools/ui.js";
+export type { UIProvider } from "./tools/ui.js";
