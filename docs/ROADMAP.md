@@ -1,4 +1,8 @@
-# Agent Harness 架构全景 · 第 1-22 章
+# Harness 架构全景 · 第 1-22 章
+
+## 全景思维导图
+
+每个章节右侧标了它在环中的位置。
 
 ```mermaid
 mindmap
@@ -32,6 +36,128 @@ mindmap
       第21章_可恢复与持久化
     第七部分：收束
       第22章_什么能迁移
+```
+
+## 一图纵览：ReAct 环 → Harness
+
+整个 Harness 所有子系统的**顺序**和**位置**都在这个环里了。①-⑪ 是每回合的流水线。
+```mermaid
+
+flowchart LR
+
+%% 统一定义样式类
+classDef observe fill:#FED7D7,stroke:#C53030
+classDef reason fill:#FEEBC8,stroke:#C05621
+classDef act fill:#BEE3F8,stroke:#2B6CB0
+Observe --> Reason --> Act --> Observe
+%% 绑定样式类
+
+class Observe observe
+class Reason reason
+class Act act
+
+```
+
+```mermaid
+flowchart LR
+
+%% 统一定义样式类 — 每步一种语义色
+classDef global   fill:#F5F5F5,stroke:#9E9E9E,stroke-dasharray: 5 5
+classDef sel      fill:#F3E5F5,stroke:#7B1FA2
+classDef snap     fill:#FFF3E0,stroke:#E65100
+classDef compact  fill:#FBE9E7,stroke:#BF360C
+classDef reason   fill:#E3F2FD,stroke:#1565C0
+classDef decide   fill:#F3E5F5,stroke:#6A1B9A
+classDef validate fill:#E0F2F1,stroke:#00695C
+classDef perms    fill:#EDE7F6,stroke:#4527A0
+classDef exec     fill:#E8EAF6,stroke:#283593
+classDef append   fill:#E8F5E9,stroke:#2E7D32
+classDef plan     fill:#F9FBE7,stroke:#827717
+classDef output   fill:#E8F5E9,stroke:#1B5E20
+classDef error    fill:#FFEBEE,stroke:#C62828
+
+
+subgraph Observe[Observe — 每回合前准备]
+    direction TB
+    Sel[① ToolCatalog<br/>select Top-K<br/>§12]
+    Snap[② Accountant<br/>snapshot<br/>§7]
+    Compact[③ Compactor<br/>mask→summarize<br/>§8]
+    Sel --> Snap
+    Snap -->|red| Compact
+    Compact -.->|retry| Snap
+end
+
+Snap -->|green/yellow| Reason
+
+Reason[④ Reason<br/>Adapter → Provider 流式<br/>§3·§5] --> Decide
+
+Decide{⑤ Decide<br/>§2} -->|isToolCall| V
+
+V{⑥ 校验闸门<br/>§4} -->|name 不存在| Error
+V -->|args 不符 schema| Error
+V -->|通过| P{⑦ Permission<br/>通过?<br/>§14}
+
+P -->|否| Error
+P -->|是| Exec[⑧ Execute Tool<br/>sync / async / MCP<br/>§4·§13]
+
+Exec --> Append[⑨ append 结果<br/>到 Transcript<br/>§3] --> Sel
+
+Decide -->|isFinal| PlanOK{⑩ Plan<br/>完成?<br/>§16}
+PlanOK -->|否| Feedback[合成提示<br/>继续 loop] --> Sel
+PlanOK -->|是| Output[⑪ 返回最终答案]
+
+subgraph Act[Act — 执行层]
+    Decide
+    Error
+    Output
+    V
+    P
+    Exec
+    Append
+    PlanOK
+    Feedback
+end
+
+
+%% Global ~~~ Observe
+
+%% subgraph Global[⓪ 全局支撑 · 循环启动前构建]
+%%     direction LR
+%%     Reg
+%%     Msg
+%% end
+
+%% subgraph Reg[⓪ Registory Tool · §4 ]
+%%     R1[name + description]
+%%     R2[input_schema]
+%%     R3[side_effect tag]
+%% end
+
+%% subgraph Msg[⓪ Message System · §3 ]
+%%     B1[TextBlock]
+%%     B2[ToolCall]
+%%     B3[ToolResult]
+%%     B4[ReasoningBlock]
+%% end
+
+
+%% 绑定样式类
+class Global global
+class Reg global
+class Msg global
+class Sel sel
+class Snap snap
+class Compact compact
+class Reason reason
+class Decide decide
+class V validate
+class P perms
+class Exec exec
+class Append append
+class PlanOK plan
+class Feedback plan
+class Output output
+class Error error
 ```
 
 ---
