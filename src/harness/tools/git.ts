@@ -15,6 +15,7 @@ import type { ToolDefinition } from "./registry.js";
 
 /* ─── 常量 ───────────────────────────────────────────────────────── */
 
+/** 每个文件 diff 输出最大行数（防止 viewport 溢出） */
 const GIT_DIFF_LINES_PER_FILE = 80;
 
 /* ─── createGitTools ─────────────────────────────────────────────── */

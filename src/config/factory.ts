@@ -127,6 +127,7 @@ export function registerAllTools(
   }
 }
 
+/** 如果工具尚未注册，则注册它（防重复注册） */
 function _registerIfNeeded(
   registry: ToolRegistry,
   name: string,

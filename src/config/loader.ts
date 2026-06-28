@@ -130,6 +130,7 @@ export function loadFromYaml(filePath: string): Partial<AgentConfig> {
 
 /* ─── CLI 参数加载 ─────────────────────────────────────────────────- */
 
+/** CLI 参数类型——从 parseArgs 输出的结构化选项 */
 export interface CliArgs {
   model?: string;
   temperature?: string;

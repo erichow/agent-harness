@@ -149,7 +149,7 @@ export class ToolCatalog {
     const queryTokens = _tokenize(query).filter((t) => t.length > 0);
     if (queryTokens.length === 0) return pinned;
 
-    // BM25 scoring (k1=1.5, b=0.75)
+    // BM25 评分（k1=1.5, b=0.75）
     const k1 = 1.5;
     const b = 0.75;
 

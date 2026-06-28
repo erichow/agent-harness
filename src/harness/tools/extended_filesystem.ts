@@ -54,7 +54,7 @@ function collectTextFiles(dirPath: string): string[] {
     for (const entry of entries) {
       const fullPath = path.join(dirPath, entry.name);
 
-      // Skip ignored directories
+      // 跳过忽略的目录
       if (entry.name.startsWith(".") || entry.name === "node_modules" ||
           entry.name === "dist" || entry.name === "build" || entry.name === "target" ||
           entry.name === "coverage" || entry.name === "reasonix" ||
@@ -69,7 +69,7 @@ function collectTextFiles(dirPath: string): string[] {
       }
     }
   } catch {
-    // Permission denied, skip
+    // 无权限访问，跳过
   }
 
   return files;
@@ -125,7 +125,7 @@ const createFileHandler = async (args: Record<string, unknown>): Promise<string>
   }
 
   try {
-    // Ensure parent directory exists
+    // 确保父目录存在
     const parentDir = path.dirname(filePath);
     if (parentDir && parentDir !== ".") {
       fs.mkdirSync(parentDir, { recursive: true });
@@ -179,12 +179,12 @@ const deleteFileHandler = async (args: Record<string, unknown>): Promise<string>
 
     if (stat.isDirectory()) {
       if (!recursive) {
-        // Check if directory is empty
+        // 检查目录是否为空
         const entries = fs.readdirSync(filePath);
         if (entries.length > 0) {
           return `delete_file: directory not empty: ${filePath}. Use recursive=true to delete non-empty directories.`;
         }
-        // Empty directory — use rmdirSync
+        // 空目录 — 用 rmdirSync
         fs.rmdirSync(filePath);
       } else {
         fs.rmSync(filePath, { recursive: true, force: true });
@@ -268,11 +268,11 @@ function listDirRecursive(dirPath: string, depth: number, currentDepth: number):
           }
         }
       } catch {
-        // Permission issue, skip this entry
+        // 无权限，跳过此条目
       }
     }
   } catch {
-    // Directory read error
+    // 读取目录出错
   }
 
   return entries;
@@ -286,13 +286,13 @@ function formatDirectoryTree(dirPath: string, entries: DirEntry[], depth: number
     return parts.join("\n");
   }
 
-  // Sort: directories first, then alphabetically
+  // 排序：目录在前，然后按字母序
   const sorted = [...entries].sort((a, b) => {
     if (a.type !== b.type) return a.type === "dir" ? -1 : 1;
     return a.name.localeCompare(b.name);
   });
 
-  // Column widths
+  // 列宽计算
   const maxNameLen = Math.min(Math.max(...sorted.map((e) => e.name.length), 4), 60);
   const formatted = sorted.map((e) => {
     const typeTag = e.type === "dir" ? "📁 " : "📄 ";
@@ -399,13 +399,13 @@ function simpleGlob(
   return results;
 }
 
-/** Simple glob matching — converts glob to regex-like matching */
+/** 简易 glob 匹配 — 将 glob 模式转为类正则匹配 */
 function matchGlob(filePath: string, pattern: string): boolean {
-  // Normalize to POSIX separators for matching
+  // 统一转为 POSIX 分隔符
   const normalizedPath = filePath.replace(/\\/g, "/");
   const normalizedPattern = pattern.replace(/\\/g, "/");
 
-  // Convert glob pattern to regex
+  // 将 glob 模式转为正则字符串
   let regexStr = "";
   let i = 0;
   while (i < normalizedPattern.length) {
@@ -413,15 +413,15 @@ function matchGlob(filePath: string, pattern: string): boolean {
 
     if (ch === '*') {
       if (i + 1 < normalizedPattern.length && normalizedPattern[i + 1] === '*') {
-        // ** — matches everything including path separators
+        // ** — 匹配任意字符，包括路径分隔符
         regexStr += '.*';
         i += 2;
-        // Skip trailing /
+        // 跳过后面的 /
         if (i < normalizedPattern.length && normalizedPattern[i] === '/') {
           i++;
         }
       } else {
-        // * — matches within a single path segment
+        // * — 匹配单个路径段内（不含 /）
         regexStr += '[^/]*';
         i++;
       }
@@ -429,7 +429,7 @@ function matchGlob(filePath: string, pattern: string): boolean {
       regexStr += '[^/]';
       i++;
     } else if (ch === '{') {
-      // {a,b} — alternation
+      // {a,b} — 多选一分组
       const closeBrace = normalizedPattern.indexOf('}', i);
       if (closeBrace > i) {
         const alternatives = normalizedPattern.slice(i + 1, closeBrace).split(',');
@@ -472,7 +472,7 @@ const globFilesHandler = async (args: Record<string, unknown>): Promise<string> 
       return `(no files matching "${pattern}")`;
     }
 
-    // Sort by mtime (newest first)
+  // 按 mtime 排序（最新在前）
     const withMtime = results.map((f) => {
       try {
         const stat = fs.statSync(path.resolve(f));
@@ -544,14 +544,14 @@ const getFileInfoHandler = async (args: Record<string, unknown>): Promise<string
       `  permissions: ${stat.mode.toString(8).slice(-3)}`,
     ];
 
-    // Try to count lines for text files
+  // 尝试统计文本文件行数
     if (stat.isFile() && stat.size > 0 && stat.size < 10 * 1024 * 1024) {
       try {
         const content = fs.readFileSync(filePath, "utf-8");
         const lineCount = countLines(content);
         lines.push(`  lines: ${lineCount}`);
       } catch {
-        // Binary file, skip line count
+        // 二进制文件，跳过行数统计
       }
     }
 
@@ -612,7 +612,7 @@ const searchInFilesHandler = async (args: Record<string, unknown>): Promise<stri
   try {
     regex = new RegExp(pattern, caseSensitive ? "g" : "gi");
   } catch {
-    // If not a valid regex, use literal string search
+    // 如果不是合法 regex，当做字面量字符串搜索
     const escaped = pattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     regex = new RegExp(escaped, caseSensitive ? "g" : "gi");
   }
@@ -625,7 +625,7 @@ const searchInFilesHandler = async (args: Record<string, unknown>): Promise<stri
     const isDir = fs.statSync(searchPath).isDirectory();
     const files = isDir ? collectTextFiles(searchPath) : [searchPath];
 
-    // Apply glob filter if specified
+    // 按 glob 过滤文件
     let filteredFiles = files;
     if (globFilter) {
       filteredFiles = files.filter((f) => {
@@ -644,9 +644,9 @@ const searchInFilesHandler = async (args: Record<string, unknown>): Promise<stri
         const lines = content.split(/\r?\n/);
 
         for (let i = 0; i < lines.length; i++) {
-          regex.lastIndex = 0; // Reset for each line
+          regex.lastIndex = 0; // 每行重置正则
           if (regex.test(lines[i])) {
-            // Collect context lines
+            // 收集上下文行
             const contextStart = Math.max(0, i - contextLines);
             const contextEnd = Math.min(lines.length, i + contextLines + 1);
             const contextSlice = lines.slice(contextStart, contextEnd);
@@ -660,7 +660,7 @@ const searchInFilesHandler = async (args: Record<string, unknown>): Promise<stri
           }
         }
       } catch {
-        // Skip unreadable files
+        // 跳过不可读的文件
       }
     }
 
@@ -668,11 +668,11 @@ const searchInFilesHandler = async (args: Record<string, unknown>): Promise<stri
       return `(no matches for "${pattern}" in ${isDir ? searchPath : path.basename(searchPath)})`;
     }
 
-    // Format output
-    const parts: string[] = [];
+    // 格式化输出
+    const parts: string[] = [];;
 
     if (contextLines > 0) {
-      // With context: show grouped blocks
+      // 带上下文：显示分组块
       for (const m of matches) {
         const relFile = path.relative(process.cwd(), m.file);
         parts.push(`\n${relFile}:${m.line}`);
@@ -684,7 +684,7 @@ const searchInFilesHandler = async (args: Record<string, unknown>): Promise<stri
         }
       }
     } else {
-      // Compact format: file:line:content
+      // 紧凑格式：file:line:content
       for (const m of matches) {
         const relFile = path.relative(process.cwd(), m.file);
         parts.push(`${relFile}:${m.line}: ${m.content}`);

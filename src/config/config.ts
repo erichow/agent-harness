@@ -7,8 +7,10 @@
 
 /* ─── Provider 配置 ──────────────────────────────────────────────── */
 
+/** Provider 类型：Anthropic / OpenAI / 本地模型 / 测试 Mock */
 export type ProviderType = "anthropic" | "openai" | "local" | "mock";
 
+/** Provider 连接配置 */
 export interface ProviderConfig {
   type: ProviderType;
   apiKey?: string;
@@ -18,8 +20,10 @@ export interface ProviderConfig {
 
 /* ─── 上下文窗口配置 ─────────────────────────────────────────────── */
 
+/** 上下文窗口配置 */
 export type CompressionThreshold = "green" | "yellow" | "red";
 
+/** 上下文管理配置 */
 export interface ContextConfig {
   maxTokens: number;
   compressionThreshold: CompressionThreshold;
@@ -28,6 +32,7 @@ export interface ContextConfig {
 
 /* ─── 工具配置 ───────────────────────────────────────────────────── */
 
+/** 工具启用配置 */
 export interface ToolsConfig {
   enabled: string[];         // "all" 或具体工具名列表
   toolsPerTurn: number;
@@ -36,6 +41,7 @@ export interface ToolsConfig {
 
 /* ─── 权限配置 ───────────────────────────────────────────────────── */
 
+/** 权限安全配置 */
 export interface PermissionsConfig {
   fileWrite: boolean;
   fileDelete: boolean;
@@ -47,6 +53,7 @@ export interface PermissionsConfig {
 
 /* ─── 成本控制配置 ───────────────────────────────────────────────── */
 
+/** 成本控制配置 */
 export interface CostConfig {
   enabled: boolean;
   maxTokens: number;
@@ -56,6 +63,7 @@ export interface CostConfig {
 
 /* ─── 可观测性配置 ───────────────────────────────────────────────── */
 
+/** 可观测性（OpenTelemetry + 日志）配置 */
 export interface ObservabilityConfig {
   enabled: boolean;
   otelEndpoint?: string;
@@ -64,6 +72,10 @@ export interface ObservabilityConfig {
 
 /* ─── Agent 总配置 ───────────────────────────────────────────────── */
 
+/**
+ * Agent 总配置——汇聚所有子模块配置。
+ * 支持从 YAML 配置文件、环境变量、CLI 参数三种来源合并。
+ */
 export interface AgentConfig {
   // 模型
   model: string;
@@ -140,6 +152,7 @@ export const DEFAULT_CONFIG: AgentConfig = {
 
 /* ─── ConfigError ────────────────────────────────────────────────── */
 
+/** ConfigError — 配置校验失败时抛出的异常 */
 export class ConfigError extends Error {
   constructor(message: string) {
     super(message);
@@ -149,6 +162,11 @@ export class ConfigError extends Error {
 
 /* ─── 配置验证 ───────────────────────────────────────────────────── */
 
+/**
+ * 校验配置是否合法。
+ * 检查范围：迭代次数、temperature、token 数、Provider 类型、成本参数、工具数、日志级别。
+ * @throws ConfigError — 发现任意错误时抛出，消息中列出所有问题
+ */
 export function validateConfig(config: AgentConfig): void {
   const errors: string[] = [];
 

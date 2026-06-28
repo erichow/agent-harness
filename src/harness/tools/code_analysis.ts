@@ -120,6 +120,7 @@ function getNodeName(node: AstNode): string {
    ① parse_ast — AST 结构概览
    ═══════════════════════════════════════════════════════════════════ */
 
+/** AST 符号信息——文件中解析出的顶层符号 */
 interface AstSymbol {
   name: string;
   kind: string;
@@ -157,7 +158,7 @@ function extractTopLevelSymbol(node: AstNode, depth: number): AstSymbol | null {
         if (s.type === "ImportNamespaceSpecifier") {
           return `${getNodeName(s)} (namespace)`;
         }
-        // ImportSpecifier
+        // ImportSpecifier 节点
         const importedName = (s.imported as AstNode)?.name ?? getNodeName(s);
         const localName = getNodeName(s);
         return importedName !== localName ? `${localName} as ${importedName}` : localName;
@@ -248,7 +249,7 @@ function extractChildren(node: AstNode, depth: number): AstSymbol[] {
   const raw = node.body as AstNode | AstNode[] | undefined;
   if (!raw) return children;
 
-  // ClassDeclaration.body is ClassBody; ClassBody.body is the member array
+  // ClassDeclaration.body 是 ClassBody; ClassBody.body 是成员数组
   const items: AstNode[] = Array.isArray(raw)
     ? raw
     : raw.type === "ClassBody"
@@ -329,6 +330,7 @@ function formatAstOutline(symbols: AstSymbol[], filePath: string): string {
    ② analyze_dependencies — 依赖分析
    ═══════════════════════════════════════════════════════════════════ */
 
+/** 单个 import 信息 */
 interface ImportInfo {
   source: string;
   specifiers: string[];
@@ -336,6 +338,7 @@ interface ImportInfo {
   line: number;
 }
 
+/** 依赖分析结果 */
 interface DependencyResult {
   file: string;
   imports: ImportInfo[];
@@ -506,7 +509,7 @@ function analyzeTransitive(filePath: string, depth: number, visited: Set<string>
     for (const imp of result.imports) {
       if (!imp.isExternal) {
         lines.push(`${indent}  → ${imp.source}`);
-        // Resolve relative import
+        // 解析相对路径的 import
         const dir = path.dirname(filePath);
         const resolved = resolveImportPath(dir, imp.source);
         if (resolved) {
@@ -526,17 +529,17 @@ function analyzeTransitive(filePath: string, depth: number, visited: Set<string>
 function resolveImportPath(baseDir: string, importPath: string): string | null {
   const exts = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".mts", ".cts", ".json"];
 
-  // Try exact path first
+  // 尝试精确路径
   const exact = path.resolve(baseDir, importPath);
   if (fs.existsSync(exact) && fs.statSync(exact).isFile()) return exact;
 
-  // Try with extensions
+  // 尝试添加扩展名
   for (const ext of exts) {
     const withExt = exact + ext;
     if (fs.existsSync(withExt)) return withExt;
   }
 
-  // Try as directory with index file
+  // 尝试作为目录 + index 文件
   for (const ext of exts) {
     const indexFile = path.join(exact, `index${ext}`);
     if (fs.existsSync(indexFile)) return indexFile;
@@ -753,7 +756,7 @@ function collectSourceFiles(dirPath: string): string[] {
   for (const entry of entries) {
     const fullPath = path.join(dirPath, entry.name);
 
-    // Skip node_modules, .git, dist, build
+    // 跳过 node_modules、.git、dist、build
     if (entry.name === "node_modules" || entry.name === ".git" ||
         entry.name === "dist" || entry.name === "build" ||
         entry.name === "target" || entry.name === "coverage" ||
@@ -797,7 +800,7 @@ function searchTryCatch(filePath: string): PatternMatch[] {
     const content = fs.readFileSync(filePath, "utf-8");
     const lines = content.split("\n");
     for (let i = 0; i < lines.length; i++) {
-      // Match try { and catch ( patterns
+      // 匹配 try { 和 catch ( 模式
       if (/^\s*try\s*\{/.test(lines[i]) || /^\s*try\s*$/.test(lines[i])) {
         // find the matching catch
         let j = i + 1;
@@ -849,7 +852,7 @@ function searchConsoleLog(filePath: string): PatternMatch[] {
     const lines = content.split("\n");
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      // Match console.log / .warn / .error / .info — skip commented lines
+      // 匹配 console.log / .warn / .error / .info — 跳过注释行
       const stripped = line.replace(/\/\/.*$/, "").trim();
       if (!stripped) continue;
       const match = stripped.match(/\bconsole\.(log|warn|error|info|debug)\s*\(/);
@@ -875,7 +878,7 @@ function searchAnyType(filePath: string): PatternMatch[] {
       const line = lines[i];
       const stripped = line.replace(/\/\/.*$/, "").trim();
       if (!stripped || stripped.startsWith("/*") || stripped.startsWith("*")) continue;
-      // Match `: any` or `as any` or `<any>`, but not `: any` in comments
+      // 匹配 `: any` 或 `as any` 或 `<any>`，排除注释中的 `: any`
       const anyMatches = stripped.match(/(?::\s*any\s*[,;)\]}={]|:\s*any$|as\s+any\b|<\s*any\s*>)/);
       if (anyMatches) {
         matches.push({
@@ -897,7 +900,7 @@ function searchTodoComment(filePath: string): PatternMatch[] {
     const lines = content.split("\n");
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      // Match TODO, FIXME, HACK, XXX in comments
+      // 匹配注释中的 TODO、FIXME、HACK、XXX
       const match = line.match(/(\/\/|#|<!--|\/\*).*\b(TODO|FIXME|HACK|XXX|WORKAROUND|HARDCODED)\b/i);
       if (match) {
         matches.push({
@@ -921,7 +924,7 @@ function searchUnusedParameter(filePath: string): PatternMatch[] {
       const line = lines[i];
       const stripped = line.replace(/\/\/.*$/, "").trim();
 
-      // Match function parameters starting with _ (convention: unused)
+      // 匹配以 _ 开头的函数参数（按惯例表示未使用）
       // e.g. function foo(_arg: string) or (_unused) => { }
       const match = stripped.match(/_\w+\s*(?::\s*\w+)?\s*[,)]/);
       if (match && (stripped.includes("function") || stripped.includes("=>") || stripped.includes("("))) {
@@ -1035,7 +1038,7 @@ const SECRET_PATTERNS = [
   /\b['"](?:sk-|pk-)[a-zA-Z0-9]{10,}['"]/,
   // connection strings
   /(?:connection[-_]?string|connstr)\s*[:=]\s*['"][^'"]+['"]/i,
-  // Generic: assignment of a long string literal to a short-named variable
+  // 通用：向短名变量赋长字符串字面量
   /\b\w{2,30}\s*[:=]\s*['"][A-Za-z0-9_\-\.]{16,}['"]/,
 ];
 

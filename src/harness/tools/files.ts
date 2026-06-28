@@ -70,12 +70,12 @@ const viewportHandler: ToolHandler = (args) => {
     return "read_file_viewport: path cannot be empty";
   }
 
-  // Exist check
+  // 文件是否存在检查
   if (!fs.existsSync(filePath)) {
     return `read_file_viewport: file does not exist: ${filePath}`;
   }
 
-  // File check
+  // 是否为文件检查
   const stat = fs.statSync(filePath);
   if (!stat.isFile()) {
     return `read_file_viewport: not a regular file: ${filePath}`;
@@ -100,7 +100,7 @@ const viewportHandler: ToolHandler = (args) => {
     (line, i) => `${String(i + start + 1).padStart(width)}  ${line}`,
   );
 
-  // Envelope footer
+  // 信封尾部
   const footerParts: string[] = [
     `file: ${filePath}`,
     `lines ${start + 1}-${end} of ${total}`,
@@ -228,7 +228,7 @@ const editHandler: ToolHandler = (args) => {
   const removed = endLine >= startLine ? endLine - startLine + 1 : 0;
   const added = replacementLines.length;
 
-  // Render context around the edit
+  // 渲染编辑区域周围的上下文
   const contextStart = Math.max(0, s - 2);
   const contextEnd = Math.min(newLines.length, s + added + 2);
   const width = String(newLines.length).length;

@@ -181,7 +181,7 @@ export class LspTransport {
 
     // 收集 stderr（仅调试用）
     this.child.stderr?.on("data", (data: Buffer) => {
-      // LSP server 的 stderr 通常只是日志
+      // LSP 服务器的 stderr 通常只是日志信息
     });
 
     // 监听退出
@@ -321,7 +321,7 @@ export class LspTransport {
         }
       }
     } catch {
-      // JSON 解析失败，忽略这条消息
+      // JSON 解析失败，忽略此消息
     }
 
     // 继续解析可能的多帧
@@ -516,7 +516,7 @@ export class LSPManager {
     const uri = this._toUri(filePath);
     const result = await this.transport.sendRequest("textDocument/definition", {
       textDocument: { uri },
-      position: { line: line - 1, character: column - 1 },  // LSP 是 0-based
+      position: { line: line - 1, character: column - 1 },  // LSP 坐标从 0 开始计数
     }) as unknown;
 
     return this._parseLocation(result);
@@ -564,7 +564,7 @@ export class LSPManager {
 
     if (!result) return [];
 
-    // LSP 可能返回 { isIncomplete, items } 或直接数组
+    // LSP 可能返回 { isIncomplete, items } 对象或直接返回数组
     const items = Array.isArray(result) ? result : (result as Record<string, unknown>).items as unknown[];
     if (!Array.isArray(items)) return [];
 
@@ -730,7 +730,7 @@ export class MockLSPManager extends LSPManager {
 
   /** 跳过真实 initialize */
   override async initialize(): Promise<void> {
-    // Mock 模式：不连接真实 server
+    // Mock 模式：不连接真实服务器
   }
 
   /* ─── 预设数据注册 ──────────────────────────────────────────── */
